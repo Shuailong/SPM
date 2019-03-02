@@ -48,7 +48,7 @@
             "dropout": 0.5
         },
         "output_feedforward": {
-            "input_dim": (300 + 300) * 5,
+            "input_dim": (300 + 300) * 6,
             "num_layers": 1,
             "hidden_dims": 300,
             "activations": "relu",

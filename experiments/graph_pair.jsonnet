@@ -4,7 +4,7 @@
         "token_indexers": {
             "tokens": {
                 "type": "single_id",
-                "lowercase_tokens": true
+                "lowercase_tokens": false
             }
         }
     },
@@ -32,7 +32,7 @@
             "dropout": 0.5
         },
         "output_feedforward": {
-            "input_dim": 1500,
+            "input_dim": 300 * 6,
             "num_layers": 1,
             "hidden_dims": 300,
             "activations": "relu",

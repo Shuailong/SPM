@@ -4,7 +4,7 @@
 # @Email: liangshuailong@gmail.com
 # @Date:   2019-02-27 23:00:11
 # @Last Modified by:  Shuailong
-# @Last Modified time: 2019-02-28 21:13:08
+# @Last Modified time: 2019-03-02 21:40:36
 
 # -*- coding: utf-8 -*-
 from overrides import overrides
@@ -60,11 +60,11 @@ class SentencePairSLSTMEncoder(nn.Module, FromParams):
 
         self.gated_Wxd = nn.Parameter(torch.Tensor(hidden_size, hidden_size))
         self.gated_Whd = nn.Parameter(
-            torch.Tensor(hidden_size * 4, hidden_size))
+            torch.Tensor(hidden_size * 6, hidden_size))
 
         self.gated_Wxo = nn.Parameter(torch.Tensor(hidden_size, hidden_size))
         self.gated_Who = nn.Parameter(
-            torch.Tensor(hidden_size * 4, hidden_size))
+            torch.Tensor(hidden_size * 6, hidden_size))
 
         self.gated_Wxf1 = nn.Parameter(torch.Tensor(hidden_size, hidden_size))
         self.gated_Whf1 = nn.Parameter(torch.Tensor(hidden_size, hidden_size))
@@ -99,7 +99,7 @@ class SentencePairSLSTMEncoder(nn.Module, FromParams):
         return self.hidden_size
 
     def get_output_dim(self):
-        return self.hidden_size * 5
+        return self.hidden_size * 6
 
     def create_a_lstm_gate(self, hidden_size, mean=0.0, stddev=0.1):
 
@@ -110,37 +110,41 @@ class SentencePairSLSTMEncoder(nn.Module, FromParams):
 
         return wxf, whf, wif, wdf
 
-    def combine_hidden_states(self, s1_hiddens, s1_mask, s2_hiddens, s2_mask, pooling="mean"):
+    def fusion(self, s1_hiddens, s1_mask, s2_hiddens, s2_mask):
         '''
+        Parameter:
+        --------
         s1_hiddens: batch x seq_len x hidden
         s1_mask: batch x seq_len
         s2_hiddens: batch x seq_len x hidden
         s2_mask: batch x seq_len
+        return:
+        ------
+        max and avg pooling and their interactions.
+        feature: torch.FloatTensor
+                (batch_size, hidden * 6)
         '''
-        # The pooling layer -- max and avg pooling.
-        # (batch_size, model_dim)
-        if pooling == "mean":
-            s1_pooled = torch.sum(s1_hiddens * s1_mask.unsqueeze(-1), dim=1) / torch.sum(
-                s1_mask, 1, keepdim=True
-            )
-            s2_pooled = torch.sum(s2_hiddens * s2_mask.unsqueeze(-1), dim=1) / torch.sum(
-                s2_mask, 1, keepdim=True
-            )
-        else:
-            s1_pooled, _ = replace_masked_values(
-                s1_hiddens, s1_mask.unsqueeze(-1), -1e7
-            ).max(dim=1)
-            s2_pooled, _ = replace_masked_values(
-                s2_hiddens, s2_mask.unsqueeze(-1), -1e7
-            ).max(dim=1)
+
+        s1_mean = torch.sum(s1_hiddens * s1_mask.unsqueeze(-1), dim=1) / \
+            torch.sum(s1_mask, 1, keepdim=True)
+        s2_mean = torch.sum(s2_hiddens * s2_mask.unsqueeze(-1), dim=1) / \
+            torch.sum(s2_mask, 1, keepdim=True)
+        s1_max, _ = replace_masked_values(
+            s1_hiddens, s1_mask.unsqueeze(-1), -1e7
+        ).max(dim=1)
+        s2_max, _ = replace_masked_values(
+            s2_hiddens, s2_mask.unsqueeze(-1), -1e7
+        ).max(dim=1)
 
         # Only use the last layer
-        features = torch.cat([s1_pooled,
-                              s2_pooled,
-                              torch.abs(s1_pooled - s2_pooled),
-                              s1_pooled * s2_pooled],
+        combined = torch.cat([s1_max,
+                              s1_mean,
+                              s2_max,
+                              s2_mean,
+                              torch.abs(s1_max - s2_max),
+                              s1_max * s2_max],
                              dim=1)
-        return features
+        return combined
 
     def get_hidden_states_before(self, padding, hidden_states, step):
         # padding zeros
@@ -188,6 +192,8 @@ class SentencePairSLSTMEncoder(nn.Module, FromParams):
             A tensor of shape (batch_size, hidden_size)
         hypothesis_hiddens: ``torch.FloatTensor``
             A tensor of shape (batch_size, hidden_size)
+        features: ``torch.FloatTensor``
+            A tensor of shape (batch_size, hidden_size x 6)
         global_hiddens: ``torch.FloatTensor``
             A tensor of shape (batch_size, hidden_size)
         """
@@ -254,7 +260,7 @@ class SentencePairSLSTMEncoder(nn.Module, FromParams):
         for _ in range(self.num_layers):
             # update global node states
             # combine states
-            combined_hidden = self.combine_hidden_states(
+            combined_hidden = self.fusion(
                 s1_hidden, s1_mask.squeeze(-1), s2_hidden, s2_mask.squeeze(-1))  # batch  * (4h)
             # input gate
             gated_d_t = torch.sigmoid(
@@ -440,14 +446,13 @@ class SentencePairSLSTMEncoder(nn.Module, FromParams):
                                             s2_emb_cell,
                                             s2_transformed_global_cell)
 
-        s1_hidden = self.dropout(s1_hidden)
-        s2_hidden = self.dropout(s2_hidden)
-        global_hidden = self.dropout(global_hidden)
+        features = self.fusion(s1_hidden, s1_mask.squeeze(-1), s2_hidden, s2_mask.squeeze(-1))
 
         output_dict = {
             'premise_hiddens': s1_hidden,
             'hypothesis_hiddens': s2_hidden,
-            'global_hiddens': global_hidden
+            'features': features,
+            'global_hidden': global_hidden
         }
 
         return output_dict
