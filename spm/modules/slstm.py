@@ -4,7 +4,7 @@
 # @Email: liangshuailong@gmail.com
 # @Date:   2019-02-27 23:00:11
 # @Last Modified by:  Shuailong
-# @Last Modified time: 2019-03-02 21:40:36
+# @Last Modified time: 2019-03-03 22:03:51
 
 # -*- coding: utf-8 -*-
 from overrides import overrides
@@ -51,12 +51,8 @@ class SentencePairSLSTMEncoder(nn.Module, FromParams):
         self.Wxo, self.Who, self.Wio, self.Wdo = self.create_a_lstm_gate(
             hidden_size)
 
-        self.bi = nn.Parameter(torch.Tensor(hidden_size))
-        self.bo = nn.Parameter(torch.Tensor(hidden_size))
-        self.bf1 = nn.Parameter(torch.Tensor(hidden_size))
-        self.bf2 = nn.Parameter(torch.Tensor(hidden_size))
-        self.bf3 = nn.Parameter(torch.Tensor(hidden_size))
-        self.bf4 = nn.Parameter(torch.Tensor(hidden_size))
+        self.bi, self.bo, self.bf1, self.bf2, self.bf3, self.bf4 = \
+            (nn.Parameter(torch.Tensor(hidden_size)) for i in range(6))
 
         self.gated_Wxd = nn.Parameter(torch.Tensor(hidden_size, hidden_size))
         self.gated_Whd = nn.Parameter(
@@ -66,34 +62,27 @@ class SentencePairSLSTMEncoder(nn.Module, FromParams):
         self.gated_Who = nn.Parameter(
             torch.Tensor(hidden_size * 6, hidden_size))
 
-        self.gated_Wxf1 = nn.Parameter(torch.Tensor(hidden_size, hidden_size))
-        self.gated_Whf1 = nn.Parameter(torch.Tensor(hidden_size, hidden_size))
-        self.gated_Wxf2 = nn.Parameter(torch.Tensor(hidden_size, hidden_size))
-        self.gated_Whf2 = nn.Parameter(torch.Tensor(hidden_size, hidden_size))
+        self.gated_Wxf1, self.gated_Whf1, self.gated_Wxf2, self.gated_Whf2 = \
+            (nn.Parameter(torch.Tensor(hidden_size, hidden_size))
+             for i in range(4))
 
-        self.gated_bd = nn.Parameter(torch.Tensor(hidden_size))
-        self.gated_bo = nn.Parameter(torch.Tensor(hidden_size))
-        self.gated_bf1 = nn.Parameter(torch.Tensor(hidden_size))
-        self.gated_bf2 = nn.Parameter(torch.Tensor(hidden_size))
+        self.gated_bd, self.gated_bo, self.gated_bf1, self.gated_bf2 = \
+            (nn.Parameter(torch.Tensor(hidden_size)) for i in range(4))
+
+        self.i_norm, self.o_norm, \
+            self.f1_norm, self.f2_norm, self.f3_norm, self.f4_norm, \
+            self.gd_norm, self.go_norm, self.gf_norm = \
+            (LayerNorm(hidden_size, eps=1e-3) for i in range(9))
 
         self.dropout = nn.Dropout(dropout)
-
-        self.i_norm = LayerNorm(hidden_size)
-        self.o_norm = LayerNorm(hidden_size)
-        self.f1_norm = LayerNorm(hidden_size)
-        self.f2_norm = LayerNorm(hidden_size)
-        self.f3_norm = LayerNorm(hidden_size)
-        self.f4_norm = LayerNorm(hidden_size)
-        self.gd_norm = LayerNorm(hidden_size)
-        self.go_norm = LayerNorm(hidden_size)
-        self.gf_norm = LayerNorm(hidden_size)
 
         self.reset_parameters()
 
     def reset_parameters(self):
         mean, stdv = 0.0, 0.1
-        for weight in self.parameters():
-            init.normal_(weight, mean, stdv)
+        for name, param in self.named_parameters():
+            if 'norm' not in name:
+                init.normal_(param, mean, stdv)
 
     def get_input_dim(self):
         return self.hidden_size
@@ -125,10 +114,13 @@ class SentencePairSLSTMEncoder(nn.Module, FromParams):
                 (batch_size, hidden * 6)
         '''
 
-        s1_mean = torch.sum(s1_hiddens * s1_mask.unsqueeze(-1), dim=1) / \
-            torch.sum(s1_mask, 1, keepdim=True)
-        s2_mean = torch.sum(s2_hiddens * s2_mask.unsqueeze(-1), dim=1) / \
-            torch.sum(s2_mask, 1, keepdim=True)
+        # s1_mean = torch.sum(s1_hiddens * s1_mask.unsqueeze(-1), dim=1) / \
+        #     torch.sum(s1_mask, 1, keepdim=True)
+        # s2_mean = torch.sum(s2_hiddens * s2_mask.unsqueeze(-1), dim=1) / \
+        #     torch.sum(s2_mask, 1, keepdim=True)
+        s1_mean = s1_hiddens.mean(1)
+        # change according to Zeeeyang's suggestion
+        s2_mean = s2_hiddens.mean(1)
         s1_max, _ = replace_masked_values(
             s1_hiddens, s1_mask.unsqueeze(-1), -1e7
         ).max(dim=1)
@@ -298,7 +290,8 @@ class SentencePairSLSTMEncoder(nn.Module, FromParams):
                 torch.cat([s1_reshaped_gated_f_t, s2_reshaped_gated_f_t,
                            torch.unsqueeze(gated_d_t, dim=1)], dim=1), dim=1)
 
-            gated_softmax_scores = self.dropout(gated_softmax_scores)
+            gated_softmax_scores = self.dropout(
+                gated_softmax_scores.permute(0, 2, 1)).permute(0, 2, 1)
 
             # split the softmax scores
             s1_new_reshaped_gated_f_t = gated_softmax_scores[:, :s1_seq_len, :]
@@ -446,7 +439,8 @@ class SentencePairSLSTMEncoder(nn.Module, FromParams):
                                             s2_emb_cell,
                                             s2_transformed_global_cell)
 
-        features = self.fusion(s1_hidden, s1_mask.squeeze(-1), s2_hidden, s2_mask.squeeze(-1))
+        features = self.fusion(
+            s1_hidden, s1_mask.squeeze(-1), s2_hidden, s2_mask.squeeze(-1))
 
         output_dict = {
             'premise_hiddens': s1_hidden,
