@@ -4,7 +4,7 @@
 # @Email: liangshuailong@gmail.com
 # @Date:   2019-02-27 22:09:48
 # @Last Modified by:  Shuailong
-# @Last Modified time: 2019-03-02 21:35:17
+# @Last Modified time: 2019-03-17 16:17:30
 
 from typing import Dict, Optional, List, Any
 from overrides import overrides
@@ -22,10 +22,10 @@ from allennlp.training.metrics import CategoricalAccuracy
 from spm.modules import SentencePairSLSTMEncoder
 
 
-@Model.register("graph_pair")
-class GraphPair(Model):
+@Model.register("slstm_share")
+class SLSTMShare(Model):
     """
-    This ``Model`` implements the GraphPair model...
+    This ``Model`` implements the SLSTMShare model...
 
     Parameters
     ----------
@@ -55,14 +55,12 @@ class GraphPair(Model):
                  encoder: SentencePairSLSTMEncoder,
                  output_feedforward: FeedForward,
                  output_logit: FeedForward,
-                 embedding_project: FeedForward = None,
                  dropout: float = 0.5,
                  initializer: InitializerApplicator = InitializerApplicator(),
                  regularizer: Optional[RegularizerApplicator] = None) -> None:
         super().__init__(vocab, regularizer)
 
         self._text_field_embedder = text_field_embedder
-        self._embedding_project = embedding_project
         self._encoder = encoder
 
         if dropout:
@@ -74,14 +72,9 @@ class GraphPair(Model):
         self._output_logit = output_logit
 
         self._num_labels = vocab.get_vocab_size(namespace="labels")
-        if self._embedding_project is None:
-            check_dimensions_match(text_field_embedder.get_output_dim(), encoder.get_input_dim(),
-            "text field embedding dim", "encoder input dim")
-        else:
-            check_dimensions_match(text_field_embedder.get_output_dim(), embedding_project.get_input_dim(),
-            "text field embedding dim", "embedding project input dim")
-            check_dimensions_match(embedding_project.get_output_dim(), encoder.get_input_dim(),
-            "embedding project output dim", "encoder input dim")
+
+        check_dimensions_match(text_field_embedder.get_output_dim(), encoder.get_input_dim(),
+        "text field embedding dim", "encoder input dim")
         check_dimensions_match(encoder.get_output_dim(), output_feedforward.get_input_dim(),
         "encoder output dim", "output_feedforward input dim")
         check_dimensions_match(output_feedforward.get_output_dim(), output_logit.get_input_dim(),
@@ -133,11 +126,6 @@ class GraphPair(Model):
         embedded_hypothesis = self._text_field_embedder(hypothesis)
         premise_mask = get_text_field_mask(premise).float()
         hypothesis_mask = get_text_field_mask(hypothesis).float()
-
-        # for ``elmo_only`` model:
-        if self._embedding_project is not None:
-            embedded_premise = self._embedding_project(embedded_premise)
-            embedded_hypothesis = self._embedding_project(embedded_hypothesis)
 
         output = self._encoder(embedded_premise, premise_mask, embedded_hypothesis, hypothesis_mask)
         fusion = output['features']

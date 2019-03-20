@@ -2,9 +2,14 @@
     "dataset_reader": {
         "type": "snli",
         "token_indexers": {
-            "elmo": {
-                "type": "elmo_characters"
-            }
+            "tokens": {
+                "type": "single_id",
+                "lowercase_tokens": true
+            },
+            "token_characters": {
+                "type": "characters",
+                "min_padding_length": 3
+            },
         }
     },
     "train_data_path": "./data/snli/snli_1.0_train.jsonl",
@@ -12,34 +17,41 @@
     "test_data_path": "./data/snli/snli_1.0_test.jsonl",
     "evaluate_on_test": true,
     "model": {
-        "type": "graph_pair",
+        "type": "slstm_share",
         "dropout": 0.5,
         "text_field_embedder": {
             "token_embedders": {
-                "elmo": {
-                    "type": "elmo_token_embedder",
-                    "options_file": "./data/elmo/elmo_2x4096_512_2048cnn_2xhighway_options.json",
-                    "weight_file": "./data/elmo/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5",
-                    "do_layer_norm": false,
-                    "dropout": 0.5
+                "tokens": {
+                    "type": "embedding",
+                    "embedding_dim": 300,
+                    "pretrained_file": "./data/glove/glove.840B.300d.txt.gz",
+                    "trainable": false
                 },
+                "token_characters": {
+                    "type": "character_encoding",
+                    "embedding": {
+                        "embedding_dim": 16
+                    },
+                    "encoder": {
+                        "type": "cnn",
+                        "embedding_dim": 16,
+                        "num_filters": 300,
+                        "ngram_filter_sizes": [
+                            3
+                        ],
+                        "conv_layer_activation": "relu"
+                    }
+                }
             }
         },
-        "embedding_project":{
-            "input_dim": 1024,
-            "num_layers": 1,
-            "hidden_dims": 300,
-            "activations": "linear",
-            "dropout": 0
-        },
         "encoder": {
-            "hidden_size": 300,
+            "hidden_size": (300 + 300),
             "num_layers": 7,
             "SLSTM_step": 1,
             "dropout": 0.5
         },
         "output_feedforward": {
-            "input_dim": 300 * 5,
+            "input_dim": (300 + 300) * 5,
             "num_layers": 1,
             "hidden_dims": 300,
             "activations": "relu",
@@ -102,7 +114,7 @@
                 "num_tokens"
             ]
         ],
-        "batch_size": 16
+        "batch_size": 32
     },
     "trainer": {
         "optimizer": {

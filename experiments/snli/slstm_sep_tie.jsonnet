@@ -13,7 +13,7 @@
     "test_data_path": "./data/snli/snli_1.0_test.jsonl",
     "evaluate_on_test": true,
     "model": {
-        "type": "graph_pair",
+        "type": "slstm_sep",
         "dropout": 0.5,
         "text_field_embedder": {
             "token_embedders": {
@@ -32,7 +32,7 @@
             "dropout": 0.5
         },
         "output_feedforward": {
-            "input_dim": 300 * 6,
+            "input_dim": 300 * 4,
             "num_layers": 1,
             "hidden_dims": 300,
             "activations": "relu",

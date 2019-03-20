@@ -6,6 +6,10 @@
                 "type": "single_id",
                 "lowercase_tokens": true
             },
+            "token_characters": {
+                "type": "characters",
+                "min_padding_length": 3
+            },
             "elmo": {
                 "type": "elmo_characters"
             }
@@ -16,7 +20,7 @@
     "test_data_path": "./data/snli/snli_1.0_test.jsonl",
     "evaluate_on_test": true,
     "model": {
-        "type": "graph_pair",
+        "type": "slstm_share",
         "dropout": 0.5,
         "text_field_embedder": {
             "token_embedders": {
@@ -33,16 +37,31 @@
                     "do_layer_norm": false,
                     "dropout": 0.5
                 },
+                "token_characters": {
+                    "type": "character_encoding",
+                    "embedding": {
+                        "embedding_dim": 16
+                    },
+                    "encoder": {
+                        "type": "cnn",
+                        "embedding_dim": 16,
+                        "num_filters": 300,
+                        "ngram_filter_sizes": [
+                            3
+                        ],
+                        "conv_layer_activation": "relu"
+                    }
+                }
             }
         },
         "encoder": {
-            "hidden_size": (1024 + 300),
+            "hidden_size": (1024 + 300 + 300),
             "num_layers": 7,
             "SLSTM_step": 1,
             "dropout": 0.5
         },
         "output_feedforward": {
-            "input_dim": (1024 + 300) * 5,
+            "input_dim": (1024 + 300 + 300) * 5,
             "num_layers": 1,
             "hidden_dims": 300,
             "activations": "relu",

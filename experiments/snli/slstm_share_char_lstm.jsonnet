@@ -4,12 +4,12 @@
         "token_indexers": {
             "tokens": {
                 "type": "single_id",
-                "lowercase_tokens": true
+                "lowercase_tokens": false
             },
             "token_characters": {
                 "type": "characters",
                 "min_padding_length": 3
-            },
+            }
         }
     },
     "train_data_path": "./data/snli/snli_1.0_train.jsonl",
@@ -17,7 +17,7 @@
     "test_data_path": "./data/snli/snli_1.0_test.jsonl",
     "evaluate_on_test": true,
     "model": {
-        "type": "graph_pair",
+        "type": "slstm_share",
         "dropout": 0.5,
         "text_field_embedder": {
             "token_embedders": {
@@ -30,16 +30,14 @@
                 "token_characters": {
                     "type": "character_encoding",
                     "embedding": {
-                        "embedding_dim": 16
+                        "embedding_dim": 100
                     },
                     "encoder": {
-                        "type": "cnn",
-                        "embedding_dim": 16,
-                        "num_filters": 300,
-                        "ngram_filter_sizes": [
-                            3
-                        ],
-                        "conv_layer_activation": "relu"
+                        "type": "lstm",
+                        "input_size": 100,
+                        "hidden_size": 150,
+                        "num_layers": 1,
+                        "bidirectional": true
                     }
                 }
             }
@@ -51,7 +49,7 @@
             "dropout": 0.5
         },
         "output_feedforward": {
-            "input_dim": (300 + 300) * 5,
+            "input_dim": (300 + 300) * 6,
             "num_layers": 1,
             "hidden_dims": 300,
             "activations": "relu",
