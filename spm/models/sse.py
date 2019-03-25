@@ -4,7 +4,7 @@
 # @Email: liangshuailong@gmail.com
 # @Date:   2019-03-01 10:11:48
 # @Last Modified by:  Shuailong
-# @Last Modified time: 2019-03-01 11:03:54
+# @Last Modified time: 2019-03-20 16:42:54
 
 from typing import Dict, Optional, List, Any
 from overrides import overrides
@@ -17,10 +17,10 @@ from allennlp.modules import FeedForward
 from allennlp.modules import TextFieldEmbedder
 from allennlp.modules import Seq2SeqEncoder
 from allennlp.nn import InitializerApplicator, RegularizerApplicator
-from allennlp.nn.util import get_text_field_mask, replace_masked_values
+from allennlp.nn.util import get_text_field_mask
 from allennlp.training.metrics import CategoricalAccuracy
 
-
+from spm.modules.utils import max_with_mask
 
 @Model.register("sse")
 class StackBiLSTMMaxout(Model):
@@ -137,13 +137,8 @@ class StackBiLSTMMaxout(Model):
         s1_layer_3_out = self._encoder3(torch.cat([embedded_premise, s1_layer_1_out, s1_layer_2_out], dim=2), premise_mask)
         s2_layer_3_out = self._encoder3(torch.cat([embedded_hypothesis, s2_layer_1_out, s2_layer_2_out], dim=2), hypothesis_mask)
 
-
-        premise_max, _ = replace_masked_values(
-            s1_layer_3_out, premise_mask.unsqueeze(-1), -1e7
-        ).max(dim=1)
-        hypothesis_max, _ = replace_masked_values(
-            s2_layer_3_out, hypothesis_mask.unsqueeze(-1), -1e7
-        ).max(dim=1)
+        premise_max = max_with_mask(s1_layer_3_out, premise_mask)
+        hypothesis_max = max_with_mask(s2_layer_3_out, hypothesis_mask)
 
         features = torch.cat([premise_max,
                               hypothesis_max,

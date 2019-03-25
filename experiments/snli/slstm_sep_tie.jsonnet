@@ -1,6 +1,11 @@
 {
     "dataset_reader": {
         "type": "snli",
+        "tokenizer": {
+            "type": "word",
+            "start_tokens": ["<bos>"],
+            "end_tokens": ["</eos>"]
+        },
         "token_indexers": {
             "tokens": {
                 "type": "single_id",
@@ -13,7 +18,7 @@
     "test_data_path": "./data/snli/snli_1.0_test.jsonl",
     "evaluate_on_test": true,
     "model": {
-        "type": "slstm_sep",
+        "type": "encoder_sep",
         "dropout": 0.5,
         "text_field_embedder": {
             "token_embedders": {
@@ -25,11 +30,11 @@
                 }
             }
         },
+        "has_global": true,
         "encoder": {
+            "type": "slstm",
             "hidden_size": 300,
-            "num_layers": 7,
-            "SLSTM_step": 1,
-            "dropout": 0.5
+            "num_layers": 7
         },
         "output_feedforward": {
             "input_dim": 300 * 4,
@@ -43,15 +48,7 @@
             "num_layers": 1,
             "hidden_dims": 3,
             "activations": "linear"
-        },
-        "initializer": [
-            [".*linear_layers.*weight", {"type": "xavier_uniform"}],
-            [".*linear_layers.*bias", {"type": "zero"}],
-            [".*weight_ih.*", {"type": "xavier_uniform"}],
-            [".*weight_hh.*", {"type": "orthogonal"}],
-            [".*bias_ih.*", {"type": "zero"}],
-            [".*bias_hh.*", {"type": "lstm_hidden_bias"}]
-        ]
+        }
     },
     "iterator": {
         "type": "bucket",

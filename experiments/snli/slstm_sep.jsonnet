@@ -13,7 +13,7 @@
     "test_data_path": "./data/snli/snli_1.0_test.jsonl",
     "evaluate_on_test": true,
     "model": {
-        "type": "slstm_sep",
+        "type": "encoder_sep",
         "dropout": 0.5,
         "text_field_embedder": {
             "token_embedders": {
@@ -26,12 +26,14 @@
             }
         },
         "encoder_p": {
+            "type": "slstm",
             "hidden_size": 300,
             "num_layers": 7,
             "SLSTM_step": 1,
             "dropout": 0.5
         },
         "encoder_h": {
+            "type": "slstm",
             "hidden_size": 300,
             "num_layers": 7,
             "SLSTM_step": 1,

@@ -4,7 +4,7 @@
 # @Email: liangshuailong@gmail.com
 # @Date:   2019-03-16 11:38:55
 # @Last Modified by:  Shuailong
-# @Last Modified time: 2019-03-20 15:57:29
+# @Last Modified time: 2019-03-24 15:52:57
 
 '''
 Implementation of the paper: Sentence-State LSTM for Text Representation
@@ -207,9 +207,9 @@ class SLSTMEncoder(nn.Module, FromParams):
             hidden = hidden * mask.unsqueeze(-1)
             cell = cell * mask.unsqueeze(-1)
 
-        output_dict = {
-            'hiddens': hidden,
-            'global_hidden': global_hidden
-        }
+        # output_dict = {
+        #     'hiddens': hidden,
+        #     'global_hidden': global_hidden
+        # }
 
-        return output_dict
+        return hidden

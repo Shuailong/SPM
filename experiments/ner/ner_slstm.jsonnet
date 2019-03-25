@@ -17,7 +17,7 @@
   "test_data_path": "./data/ner/eng.testb",
   "evaluate_on_test": true,
   "model": {
-    "type": "slstm_crf_tagger",
+    "type": "crf_tagger",
     "label_encoding": "BIOUL",
     "constrain_crf_decoding": true,
     "calculate_span_f1": true,
@@ -34,6 +34,7 @@
        },
     },
     "encoder": {
+        "type": "slstm",
         "hidden_size": 300,
         "num_layers": 9
     },

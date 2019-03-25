@@ -28,11 +28,9 @@
         "encoder": {
             "hidden_size": 300,
             "num_layers": 7,
-            "SLSTM_step": 1,
-            "dropout": 0.5
         },
         "output_feedforward": {
-            "input_dim": 300 * 6,
+            "input_dim": 300 * 4,
             "num_layers": 1,
             "hidden_dims": 300,
             "activations": "relu",
@@ -43,15 +41,7 @@
             "num_layers": 1,
             "hidden_dims": 3,
             "activations": "linear"
-        },
-        "initializer": [
-            [".*linear_layers.*weight", {"type": "xavier_uniform"}],
-            [".*linear_layers.*bias", {"type": "zero"}],
-            [".*weight_ih.*", {"type": "xavier_uniform"}],
-            [".*weight_hh.*", {"type": "orthogonal"}],
-            [".*bias_ih.*", {"type": "zero"}],
-            [".*bias_hh.*", {"type": "lstm_hidden_bias"}]
-        ]
+        }
     },
     "iterator": {
         "type": "bucket",

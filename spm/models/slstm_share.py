@@ -4,7 +4,7 @@
 # @Email: liangshuailong@gmail.com
 # @Date:   2019-02-27 22:09:48
 # @Last Modified by:  Shuailong
-# @Last Modified time: 2019-03-17 16:17:30
+# @Last Modified time: 2019-03-24 17:46:32
 
 from typing import Dict, Optional, List, Any
 from overrides import overrides
@@ -14,12 +14,13 @@ from allennlp.common.checks import check_dimensions_match
 from allennlp.data import Vocabulary
 from allennlp.models.model import Model
 from allennlp.modules import FeedForward
+from allennlp.modules import Seq2SeqEncoder
 from allennlp.modules import TextFieldEmbedder
 from allennlp.nn import InitializerApplicator, RegularizerApplicator
 from allennlp.nn.util import get_text_field_mask
 from allennlp.training.metrics import CategoricalAccuracy
 
-from spm.modules import SentencePairSLSTMEncoder
+from spm.modules.utils import max_with_mask
 
 
 @Model.register("slstm_share")
@@ -36,7 +37,7 @@ class SLSTMShare(Model):
     embedding_project: ``Feedforward``, optional
         Used to cast ELMo embeddings (1024) to lower dimensions for computation efficiency.
         (may decrease performance?)
-    encoder : ``SentencePairSLSTMEncoder``
+    encoder : ``Seq2SeqEncoder``
         Used to encode the premise and hypothesis using SLSTM and GNN.
     output_feedforward : ``FeedForward``
         Used to prepare the concatenated premise and hypothesis for prediction.
@@ -52,7 +53,7 @@ class SLSTMShare(Model):
 
     def __init__(self, vocab: Vocabulary,
                  text_field_embedder: TextFieldEmbedder,
-                 encoder: SentencePairSLSTMEncoder,
+                 encoder: Seq2SeqEncoder,
                  output_feedforward: FeedForward,
                  output_logit: FeedForward,
                  dropout: float = 0.5,
@@ -74,13 +75,13 @@ class SLSTMShare(Model):
         self._num_labels = vocab.get_vocab_size(namespace="labels")
 
         check_dimensions_match(text_field_embedder.get_output_dim(), encoder.get_input_dim(),
-        "text field embedding dim", "encoder input dim")
-        check_dimensions_match(encoder.get_output_dim(), output_feedforward.get_input_dim(),
-        "encoder output dim", "output_feedforward input dim")
+                               "text field embedding dim", "encoder input dim")
+        check_dimensions_match(encoder.get_output_dim() * 4, output_feedforward.get_input_dim(),
+                               "encoder output dim", "output_feedforward input dim")
         check_dimensions_match(output_feedforward.get_output_dim(), output_logit.get_input_dim(),
-        "output_feedforward output dim", "output_logit input dim")
+                               "output_feedforward output dim", "output_logit input dim")
         check_dimensions_match(output_logit.get_output_dim(), self._num_labels,
-        "output_logit output dim", "number of labels")
+                               "output_logit output dim", "number of labels")
 
         self._accuracy = CategoricalAccuracy()
         self._loss = torch.nn.CrossEntropyLoss()
@@ -127,9 +128,23 @@ class SLSTMShare(Model):
         premise_mask = get_text_field_mask(premise).float()
         hypothesis_mask = get_text_field_mask(hypothesis).float()
 
-        output = self._encoder(embedded_premise, premise_mask, embedded_hypothesis, hypothesis_mask)
-        fusion = output['features']
+        premise_seq_len = embedded_premise.size(1)
+        concat_inputs = torch.cat(
+            [embedded_premise, embedded_hypothesis], dim=1)
+        concat_mask = torch.cat([premise_mask, hypothesis_mask], dim=1)
 
+        output = self._encoder(concat_inputs, concat_mask)
+
+        premise_hidden = output[:, :premise_seq_len, :]
+        hypothesis_hidden = output[:, premise_seq_len:, :]
+
+        premise_feats = max_with_mask(premise_hidden, premise_mask)
+        hypothesis_feats = max_with_mask(hypothesis_hidden, hypothesis_mask)
+
+        fusion = torch.cat([premise_feats,
+                            hypothesis_feats,
+                            torch.abs(premise_feats - hypothesis_feats),
+                            premise_feats * hypothesis_feats], dim=-1)
         if self.dropout:
             fusion = self.dropout(fusion)
 
