@@ -4,7 +4,7 @@
 # @Email: liangshuailong@gmail.com
 # @Date:   2019-03-24 16:15:23
 # @Last Modified by:  Shuailong
-# @Last Modified time: 2019-03-24 16:31:34
+# @Last Modified time: 2019-04-08 11:50:50
 
 from __future__ import division
 import os
@@ -15,23 +15,28 @@ from tqdm import tqdm
 import numpy as np
 
 
-def read_data(datadir, data_file):
+def read_data(mode, datadir, data_file):
     res = []
     with open(os.path.join(datadir, data_file)) as f:
         for line in tqdm(f):
             d = json.loads(line.strip())
             sentence1 = d['sentence1']
             sentence2 = d['sentence2']
-            res.append(len(sentence1.split()))
-            res.append(len(sentence2.split()))
+            l1 = len(sentence1.split())
+            l2 = len(sentence2.split())
+            if mode == 'sent':
+                res.append(l1)
+                res.append(l2)
+            else:
+                res.append(l1 + l2)
     return res
 
 
 def main(args):
     print(args)
-    train_lens = read_data(args.data_dir, 'snli_1.0_train.jsonl')
-    dev_lens = read_data(args.data_dir, 'snli_1.0_dev.jsonl')
-    test_lens = read_data(args.data_dir, 'snli_1.0_test.jsonl')
+    train_lens = read_data(args.mode, args.data_dir, 'snli_1.0_train.jsonl')
+    dev_lens = read_data(args.mode, args.data_dir, 'snli_1.0_dev.jsonl')
+    test_lens = read_data(args.mode, args.data_dir, 'snli_1.0_test.jsonl')
 
     print(
         f'train max/min/avg: {max(train_lens)}/{min(train_lens)}/{np.mean(train_lens):.2f}')
@@ -48,6 +53,7 @@ def main(args):
             c += 1
     print(f'{c} train instances are longer than 60')
 
+
 def str2bool(v):
     return v.lower() in ('yes', 'true', 't', '1', 'y')
 
@@ -57,6 +63,8 @@ if __name__ == '__main__':
         description='Analyze sentence length for SNLI dataset')
     parser.register('type', 'bool', str2bool)
     parser.add_argument('--data-dir', type=str, default='./data/snli')
+    parser.add_argument('--mode', type=str,
+                        choices=['sent', 'sent_pair'], default='sent')
     parser.set_defaults()
     args = parser.parse_args()
     main(args)

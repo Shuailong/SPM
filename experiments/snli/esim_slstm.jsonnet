@@ -26,17 +26,15 @@
             }
         },
         "encoder": {
-            "type": "lstm",
-            "input_size": 300,
+            "type": "slstm",
             "hidden_size": 300,
-            "num_layers": 1,
-            "bidirectional": true
+            "num_layers": 7,
         },
         "similarity_function": {
             "type": "dot_product"
         },
         "projection_feedforward": {
-            "input_dim": 2400,
+            "input_dim": 1200,
             "hidden_dims": 300,
             "num_layers": 1,
             "activations": "relu"

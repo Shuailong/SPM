@@ -4,7 +4,7 @@
 # @Email: liangshuailong@gmail.com
 # @Date:   2019-03-16 11:38:55
 # @Last Modified by:  Shuailong
-# @Last Modified time: 2019-03-24 15:52:57
+# @Last Modified time: 2019-04-08 11:09:56
 
 '''
 Implementation of the paper: Sentence-State LSTM for Text Representation
@@ -123,6 +123,17 @@ class SLSTMEncoder(nn.Module, FromParams):
             # update global node states #
             #############################
             hidden_avg = mean_with_mask(hidden, mask)
+            # s1_hidden = hidden[:, :s1_len, :]
+            # s2_hidden = hidden[:, s1_len:, :]
+
+            # s1_feats, _ = s1_hidden.max(1)
+            # s2_feats, _ = s2_hidden.max(1)
+
+            # hidden_avg = torch.cat([s1_feats,
+            #                     s2_feats,
+            #                     torch.abs(s1_feats - s2_feats),
+            #                     s1_feats * s2_feats], dim=-1)
+
             projected_input = self.g_input_linearity(global_hidden)
             projected_hiddens = self.g_hidden_linearity(hidden)
             projected_avg = self.g_avg_linearity(hidden_avg)
@@ -188,13 +199,13 @@ class SLSTMEncoder(nn.Module, FromParams):
                                      projected_global[..., 6 * hidden_size:7 * hidden_size].unsqueeze(1).expand_as(inputs)))
 
             # gate: batch x seq_len x hidden_size
-            gates_normalized = F.softmax(torch.stack(gates), dim=0)
+            gates_normalized = F.softmax(torch.stack(gates[:-1]), dim=0)
             input_gate = gates_normalized[0, ...]
             left_gate = gates_normalized[1, ...]
             right_gate = gates_normalized[2, ...]
             forget_gate = gates_normalized[3, ...]
             global_gate = gates_normalized[4, ...]
-            output_gate = gates_normalized[5, ...]
+            output_gate = gates[-1]
 
             cell = left_gate * cell_l +\
                 right_gate * cell_r +\
@@ -203,13 +214,7 @@ class SLSTMEncoder(nn.Module, FromParams):
                 global_gate * global_cell.unsqueeze(1).expand_as(global_gate)
 
             hidden = output_gate * torch.tanh(cell)
-
             hidden = hidden * mask.unsqueeze(-1)
             cell = cell * mask.unsqueeze(-1)
-
-        # output_dict = {
-        #     'hiddens': hidden,
-        #     'global_hidden': global_hidden
-        # }
 
         return hidden

@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 # @Author: Shuailong
 # @Email: liangshuailong@gmail.com
-# @Date:   2019-02-27 22:09:48
+# @Date:   2019-04-05 22:00:49
 # @Last Modified by:  Shuailong
-# @Last Modified time: 2019-04-07 15:50:47
+# @Last Modified time: 2019-04-09 13:56:57
 
 from typing import Dict, Optional, List, Any
 from overrides import overrides
@@ -17,16 +17,13 @@ from allennlp.modules import FeedForward
 from allennlp.modules import Seq2SeqEncoder
 from allennlp.modules import TextFieldEmbedder
 from allennlp.nn import InitializerApplicator, RegularizerApplicator
-from allennlp.nn.util import get_text_field_mask
 from allennlp.training.metrics import CategoricalAccuracy
-
 from spm.modules.utils import max_with_mask
 
-
-@Model.register("slstm_share")
-class SLSTMShare(Model):
+@Model.register("bert_snli")
+class BertSNLI(Model):
     """
-    This ``Model`` implements the SLSTMShare model...
+    This ``Model`` implements the BertSNLI model...
 
     Parameters
     ----------
@@ -34,13 +31,8 @@ class SLSTMShare(Model):
     text_field_embedder : ``TextFieldEmbedder``
         Used to embed the ``premise`` and ``hypothesis`` ``TextFields`` we get as input to the
         model.
-    embedding_project: ``Feedforward``, optional
-        Used to cast ELMo embeddings (1024) to lower dimensions for computation efficiency.
-        (may decrease performance?)
     encoder : ``Seq2SeqEncoder``
-        Used to encode the premise and hypothesis using SLSTM and GNN.
-    output_feedforward : ``FeedForward``
-        Used to prepare the concatenated premise and hypothesis for prediction.
+        Used to encode the premise and hypothesis.
     output_logit : ``FeedForward``
         This feedforward network computes the output logits.
     dropout : ``float``, optional (default=0.5)
@@ -53,33 +45,34 @@ class SLSTMShare(Model):
 
     def __init__(self, vocab: Vocabulary,
                  text_field_embedder: TextFieldEmbedder,
-                 encoder: Seq2SeqEncoder,
-                 output_feedforward: FeedForward,
                  output_logit: FeedForward,
-                 dropout: float = 0.5,
+                 aggregation: str = 'CLS',
+                 encoder: Seq2SeqEncoder = None,
+                 dropout: float = 0.1,
                  initializer: InitializerApplicator = InitializerApplicator(),
                  regularizer: Optional[RegularizerApplicator] = None) -> None:
         super().__init__(vocab, regularizer)
 
         self._text_field_embedder = text_field_embedder
+        self.aggregation = aggregation
         self._encoder = encoder
-
         if dropout:
             self.dropout = torch.nn.Dropout(dropout)
         else:
             self.dropout = None
 
-        self._output_feedforward = output_feedforward
         self._output_logit = output_logit
 
         self._num_labels = vocab.get_vocab_size(namespace="labels")
 
-        check_dimensions_match(text_field_embedder.get_output_dim(), encoder.get_input_dim(),
-                               "text field embedding dim", "encoder input dim")
-        check_dimensions_match(encoder.get_output_dim() * 4, output_feedforward.get_input_dim(),
-                               "encoder output dim", "output_feedforward input dim")
-        check_dimensions_match(output_feedforward.get_output_dim(), output_logit.get_input_dim(),
-                               "output_feedforward output dim", "output_logit input dim")
+        if self._encoder:
+            check_dimensions_match(text_field_embedder.get_output_dim(), encoder.get_input_dim(),
+                                   "text field embedding dim", "encoder input dim")
+            check_dimensions_match(encoder.get_output_dim(), output_logit.get_input_dim(),
+                                   "encoder input dim", "output_logit input dim")
+        else:
+            check_dimensions_match(text_field_embedder.get_output_dim(), output_logit.get_input_dim(),
+                                   "text field embedding dim", "output_logit input dim")
         check_dimensions_match(output_logit.get_output_dim(), self._num_labels,
                                "output_logit output dim", "number of labels")
 
@@ -90,8 +83,7 @@ class SLSTMShare(Model):
 
     @overrides
     def forward(self,  # type: ignore
-                premise: Dict[str, torch.LongTensor],
-                hypothesis: Dict[str, torch.LongTensor],
+                sentence_pair: Dict[str, torch.LongTensor],
                 label: torch.IntTensor = None,
                 metadata: List[Dict[str, Any]
                                ] = None  # pylint:disable=unused-argument
@@ -100,9 +92,7 @@ class SLSTMShare(Model):
         """
         Parameters
         ----------
-        premise : Dict[str, torch.LongTensor]
-            From a ``TextField``
-        hypothesis : Dict[str, torch.LongTensor]
+        sentence_pair : Dict[str, torch.LongTensor]
             From a ``TextField``
         label : torch.IntTensor, optional (default = None)
             From a ``LabelField``
@@ -123,34 +113,22 @@ class SLSTMShare(Model):
         loss : torch.FloatTensor, optional
             A scalar loss to be optimised.
         """
-        premise_embeded = self._text_field_embedder(premise)
-        hypothesis_embeded = self._text_field_embedder(hypothesis)
-        premise_mask = get_text_field_mask(premise).float()
-        hypothesis_mask = get_text_field_mask(hypothesis).float()
-
-        premise_seq_len = premise_embeded.size(1)
-        concat_inputs = torch.cat(
-            [premise_embeded, hypothesis_embeded], dim=1)
-        concat_mask = torch.cat([premise_mask, hypothesis_mask], dim=1)
-        hiddens = self._encoder(concat_inputs, concat_mask, premise_seq_len)
-
-        premise_hidden = hiddens[:, :premise_seq_len, :]
-        hypothesis_hidden = hiddens[:, premise_seq_len:, :]
-
-        premise_feats = max_with_mask(premise_hidden, premise_mask)
-        hypothesis_feats = max_with_mask(hypothesis_hidden, hypothesis_mask)
-
-        fusion = torch.cat([premise_feats,
-                            hypothesis_feats,
-                            torch.abs(premise_feats - hypothesis_feats),
-                            premise_feats * hypothesis_feats], dim=-1)
+        embeded = self._text_field_embedder(sentence_pair)
+        mask = sentence_pair['mask'].float()
+        if self._encoder:
+            encoded = self._encoder(embeded, mask)
+        else:
+            encoded = embeded
+        if self.aggregation == 'CLS':
+            cls_hidden = encoded[:, 0, :]
+        else:
+            cls_hidden = max_with_mask(encoded, mask)
 
         if self.dropout:
-            fusion = self.dropout(fusion)
+            cls_hidden = self.dropout(cls_hidden)
 
-        # the final MLP -- apply dropout to input, and MLP applies to output & hidden
-        output_hidden = self._output_feedforward(fusion)
-        label_logits = self._output_logit(output_hidden)
+        # the final MLP -- apply dropout to input, and MLP applies to hidden
+        label_logits = self._output_logit(cls_hidden)
         label_probs = torch.nn.functional.softmax(label_logits, dim=-1)
 
         output_dict = {"label_logits": label_logits,

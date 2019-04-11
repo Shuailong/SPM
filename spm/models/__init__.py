@@ -4,7 +4,7 @@
 # @Email: liangshuailong@gmail.com
 # @Date:   2019-02-27 22:09:20
 # @Last Modified by:  Shuailong
-# @Last Modified time: 2019-03-17 12:56:54
+# @Last Modified time: 2019-03-25 23:21:40
 
 from spm.models.slstm_share import SLSTMShare
-from spm.models.slstm_sep import SLSTMSep
+from spm.models.encoder_sep import EncoderSep

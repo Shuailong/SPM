@@ -2,9 +2,11 @@
     "dataset_reader": {
         "type": "snli",
         "token_indexers": {
-            "tokens": {
-                "type": "single_id",
-                "lowercase_tokens": false
+            "bert": {
+                "type": "bert-pretrained-sl",
+                "pretrained_model": "data/bert/vocab.txt",
+                "start_tokens": [],
+                "end_tokens": []
             }
         }
     },
@@ -16,21 +18,25 @@
         "type": "slstm_share",
         "dropout": 0.5,
         "text_field_embedder": {
+            "allow_unmatched_keys": true,
+            "embedder_to_indexer_map": {
+                "bert": ["bert"]
+            },
             "token_embedders": {
-                "tokens": {
-                    "type": "embedding",
-                    "embedding_dim": 300,
-                    "trainable": false
+                "bert": {
+                    "type": "bert-pretrained",
+                    "pretrained_model": "data/bert/bert-base-uncased.tar.gz",
+                    "requires_grad": false
                 }
             }
         },
         "encoder": {
             "type": "slstm",
-            "hidden_size": 300,
+            "hidden_size": 768,
             "num_layers": 7,
         },
         "output_feedforward": {
-            "input_dim": 300 * 4,
+            "input_dim": 768 * 4,
             "num_layers": 1,
             "hidden_dims": 300,
             "activations": "relu",
@@ -47,7 +53,7 @@
         "type": "bucket",
         "sorting_keys": [["premise", "num_tokens"],
                          ["hypothesis", "num_tokens"]],
-        "batch_size": 32
+        "batch_size": 16
     },
     "trainer": {
         "optimizer": {

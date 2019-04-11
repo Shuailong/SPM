@@ -1,10 +1,16 @@
 {
     "dataset_reader": {
-        "type": "snli",
+        "type": "snli-bert",
+        "tokenizer": {
+            "type": "word",
+            "word_splitter": {
+                "type": "bert-basic"
+            }
+        },
         "token_indexers": {
-            "tokens": {
-                "type": "single_id",
-                "lowercase_tokens": false
+            "bert": {
+                "type": "bert-pretrained-sl",
+                "pretrained_model": "data/bert/vocab.txt",
             }
         }
     },
@@ -13,47 +19,44 @@
     "test_data_path": "./data/snli/snli_1.0_test.jsonl",
     "evaluate_on_test": true,
     "model": {
-        "type": "slstm_share",
-        "dropout": 0.5,
+        "type": "bert_snli",
+        "dropout": 0.1,
         "text_field_embedder": {
+            "allow_unmatched_keys": true,
+            "embedder_to_indexer_map": {
+                "bert": ["bert", "bert-offsets", "bert-type-ids"]
+            },
             "token_embedders": {
-                "tokens": {
-                    "type": "embedding",
-                    "pretrained_file": "./data/glove/glove.840B.300d.txt.gz",
-                    "embedding_dim": 300,
-                    "trainable": false
+                "bert": {
+                    "type": "bert-pretrained",
+                    "pretrained_model": "data/bert/bert-base-uncased.tar.gz",
+                    "requires_grad": true
                 }
             }
         },
-        "encoder": {
-            "type": "slstm",
-            "hidden_size": 300,
-            "num_layers": 7,
-        },
-        "output_feedforward": {
-            "input_dim": 300 * 4,
+        "encoder":{
+            "type": "lstm",
+            "input_size": 768,
+            "hidden_size": 1024,
             "num_layers": 1,
-            "hidden_dims": 300,
-            "activations": "relu",
-            "dropout": 0.5
+            "bidirectional": true
         },
         "output_logit": {
-            "input_dim": 300,
+            "input_dim": 2048,
             "num_layers": 1,
             "hidden_dims": 3,
-            "activations": "linear"
+            "activations": "linear",
         }
     },
     "iterator": {
         "type": "bucket",
-        "sorting_keys": [["premise", "num_tokens"],
-                         ["hypothesis", "num_tokens"]],
-        "batch_size": 32
+        "sorting_keys": [["sentence_pair", "num_tokens"]],
+        "batch_size": 16
     },
     "trainer": {
         "optimizer": {
             "type": "adam",
-            "lr": 0.0004
+            "lr": 4e-5
         },
         "validation_metric": "+accuracy",
         "num_serialized_models_to_keep": 2,
