@@ -2,11 +2,11 @@
 
 from torch import nn
 from torch import autograd
-import numpy as np
+# import numpy as np
 import torch
-import sys
+# import sys
 import torch.nn.functional as F
-from utils.locked_dropout import LockedDropout
+# from utils.locked_dropout import LockedDropout
 #from allennlp.modules import ScalarMix
 
 class LayerNorm(nn.Module):
@@ -21,14 +21,6 @@ class LayerNorm(nn.Module):
         mean = x.mean(-1, keepdim=True)
         std = x.std(-1, keepdim=True)
         return self.a_2 * (x - mean) / (std + self.eps) + self.b_2
-
-class LayerNorm2(nn.Module):
-    "Construct a layernorm module (See citation for details)."
-    def __init__(self, features, eps=1e-3):
-        super(LayerNorm2, self).__init__()
-
-    def forward(self, x):
-        return x
 
 
 class SLSTM(nn.Module):
