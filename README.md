@@ -7,20 +7,30 @@ File structure
 <pre>
 |
 |--data
+|    |
 |    |--elmo
 |    |    |--elmo_2x4096_512_2048cnn_2xhighway_options.json
 |    |    |--elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5
+|    |
 |    |--glove
 |    |    |--glove.840B.300d.txt.gz
+|    |
 |    |--snli
-|         |--snli_1.0_dev.jsonl
-|         |--snli_1.0_train.jsonl
-|         |--snli_1.0_test.jsonl
+|    |    |--snli_1.0_dev.jsonl
+|    |    |--snli_1.0_train.jsonl
+|    |    |--snli_1.0_test.jsonl
+|    |
+|    |--bert
+|         |--vocab.txt
+|         |--bert-base-uncased.tar.gz
+|
 |--models
+     |
      |--snli
+
 </pre>
 
-Links: [elmo](https://github.com/allenai/allennlp/blob/master/tutorials/how_to/elmo.md), [glove](https://nlp.stanford.edu/projects/glove/), [snli](https://nlp.stanford.edu/projects/snli/)
+Links: [elmo](https://github.com/allenai/allennlp/blob/master/tutorials/how_to/elmo.md), [glove](https://nlp.stanford.edu/projects/glove/), [snli](https://nlp.stanford.edu/projects/snli/), [bert model](https://github.com/huggingface/pytorch-pretrained-BERT/blob/master/pytorch_pretrained_bert/modeling.py), [bert vocab](https://github.com/huggingface/pytorch-pretrained-BERT/blob/master/pytorch_pretrained_bert/tokenization.py)
 
 #### Installation
 Follow the instructions [here](https://github.com/allenai/allennlp).
