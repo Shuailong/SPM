@@ -123,16 +123,6 @@ class SLSTMEncoder(nn.Module, FromParams):
             # update global node states #
             #############################
             hidden_avg = mean_with_mask(hidden, mask)
-            # s1_hidden = hidden[:, :s1_len, :]
-            # s2_hidden = hidden[:, s1_len:, :]
-
-            # s1_feats, _ = s1_hidden.max(1)
-            # s2_feats, _ = s2_hidden.max(1)
-
-            # hidden_avg = torch.cat([s1_feats,
-            #                     s2_feats,
-            #                     torch.abs(s1_feats - s2_feats),
-            #                     s1_feats * s2_feats], dim=-1)
 
             projected_input = self.g_input_linearity(global_hidden)
             projected_hiddens = self.g_hidden_linearity(hidden)

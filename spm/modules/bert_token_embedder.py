@@ -43,7 +43,8 @@ class BertEmbedder(TokenEmbedder):
 
     def __init__(self, bert_model: BertModel,
                  top_layer_only: bool = False,
-                 projection_dim: int = None) -> None:
+                 projection_dim: int = None,
+                 pool: bool = False) -> None:
         super().__init__()
         self.bert_model = bert_model
 
@@ -54,11 +55,12 @@ class BertEmbedder(TokenEmbedder):
         else:
             self._projection = None
             self.output_dim = bert_model.config.hidden_size
-        if not top_layer_only:
+        if not top_layer_only and not pool:
             self._scalar_mix = ScalarMix(bert_model.config.num_hidden_layers,
                                          do_layer_norm=False)
         else:
             self._scalar_mix = None
+        self.pool = pool
 
     def get_output_dim(self) -> int:
         return self.output_dim
@@ -101,10 +103,14 @@ class BertEmbedder(TokenEmbedder):
 
         # input_ids may have extra dimensions, so we reshape down to 2-d
         # before calling the BERT model and then reshape back at the end.
-        all_encoder_layers, _ = self.bert_model(input_ids=util.combine_initial_dims(input_ids),
-                                                token_type_ids=util.combine_initial_dims(
-                                                    token_type_ids),
-                                                attention_mask=util.combine_initial_dims(input_mask))
+        all_encoder_layers, pooled_output = self.bert_model(input_ids=util.combine_initial_dims(input_ids),
+                                                            token_type_ids=util.combine_initial_dims(
+            token_type_ids),
+            attention_mask=util.combine_initial_dims(input_mask))
+        if self.pool:
+            if self._projection:
+                return self._projection(pooled_output)
+            return pooled_output
         if self._scalar_mix is not None:
             mix = self._scalar_mix(all_encoder_layers, input_mask)
         else:
@@ -154,13 +160,15 @@ class PretrainedBertEmbedder(BertEmbedder):
     """
 
     def __init__(self,
-    			 pretrained_model: str,
-    			 requires_grad: bool = False,
-    			 top_layer_only: bool = False,
-    			 projection_dim: int = None) -> None:
+                 pretrained_model: str,
+                 requires_grad: bool = False,
+                 top_layer_only: bool = False,
+                 projection_dim: int = None,
+                 pool: bool = True) -> None:
         model = BertModel.from_pretrained(pretrained_model)
 
         for param in model.parameters():
             param.requires_grad = requires_grad
 
-        super().__init__(bert_model=model, top_layer_only=top_layer_only, projection_dim=projection_dim)
+        super().__init__(bert_model=model, top_layer_only=top_layer_only,
+                         projection_dim=projection_dim, pool=pool)

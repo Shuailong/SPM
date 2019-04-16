@@ -20,6 +20,7 @@ from allennlp.nn import InitializerApplicator, RegularizerApplicator
 from allennlp.training.metrics import CategoricalAccuracy
 from spm.modules.utils import max_with_mask
 
+
 @Model.register("bert_snli")
 class BertSNLI(Model):
     """
@@ -120,7 +121,7 @@ class BertSNLI(Model):
         else:
             encoded = embeded
         if self.aggregation == 'CLS':
-            cls_hidden = encoded[:, 0, :]
+            cls_hidden = encoded
         else:
             cls_hidden = max_with_mask(encoded, mask)
 
