@@ -7,3 +7,4 @@
 # @Last Modified time: 2019-04-06 23:38:52
 
 from spm.data.dataset_readers.snli import SnliReader
+from spm.data.dataset_readers.sst2 import GLUESST2DatasetReader
