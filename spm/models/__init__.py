@@ -8,3 +8,5 @@
 
 from spm.models.slstm_share import SLSTMShare
 from spm.models.encoder_sep import EncoderSep
+from spm.models.bert_classifier import BertSequenceClassifier
+from spm.models.bert_with_encoder_classifier import BertEncoderClassifier

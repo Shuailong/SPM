@@ -8,3 +8,5 @@
 
 # pylint: disable=wildcard-import
 from spm.models import *
+from spm.modules import *
+from spm.data import *

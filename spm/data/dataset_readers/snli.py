@@ -79,8 +79,10 @@ class SnliReader(DatasetReader):
         fields: Dict[str, Field] = {}
         premise_tokens = self._tokenizer.tokenize(premise)
         hypothesis_tokens = self._tokenizer.tokenize(hypothesis)
-        sentence_pair_tokens = [Token("[CLS]")] + premise_tokens + [Token("[SEP]")] + hypothesis_tokens
-        fields['sentence_pair'] = TextField(sentence_pair_tokens, self._token_indexers)
+        sentence_pair_tokens = premise_tokens + \
+            [Token("[SEP]")] + hypothesis_tokens
+        fields['tokens'] = TextField(
+            sentence_pair_tokens, self._token_indexers)
         if label:
             fields['label'] = LabelField(label)
 

@@ -2,7 +2,7 @@ local bert_type = 'base';
 local run_env = 'local';
 
 local batch_size_base = 32; // 8g GPU mem required
-local batch_size_large = 16; // 16g GPU mem required
+local batch_size_large = 20; // 16g GPU mem required
 local feature_size_base = 768;
 local feature_size_large = 1024;
 local data_root = if run_env == 'local' then 'data' else '/mnt/SPM/data';
@@ -20,7 +20,7 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
         },
         "token_indexers": {
             "bert": {
-                "type": "bert-pretrained-sl",
+                "type": "bert-pretrained",
                 "pretrained_model": data_root + "/bert/bert-"+bert_type+"-uncased-vocab.txt"
             }
         }
@@ -30,24 +30,22 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
     "test_data_path": data_root + "/snli/snli_1.0_test.jsonl",
     "evaluate_on_test": true,
     "model": {
-        "type": "bert_snli",
-        "aggregation": "CLS",
-        "dropout": 0.1,
-        "text_field_embedder": {
+        "type": "bert_sequence_classifier",
+        "bert": {
             "allow_unmatched_keys": true,
             "embedder_to_indexer_map": {
                 "bert": ["bert", "bert-offsets", "bert-type-ids"]
             },
             "token_embedders": {
                 "bert": {
-                    "type": "bert-pretrained-sl",
+                    "type": "bert-pretrained",
                     "pretrained_model": data_root + "/bert/bert-"+bert_type+"-uncased.tar.gz",
                     "requires_grad": true,
-                    "pool": true
+                    "top_layer_only": true
                 }
             }
         },
-        "output_logit": {
+        "classifier": {
             "input_dim": feature_size,
             "num_layers": 1,
             "hidden_dims": 3,
@@ -56,7 +54,7 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
     },
     "iterator": {
         "type": "bucket",
-        "sorting_keys": [["sentence_pair", "num_tokens"]],
+        "sorting_keys": [["tokens", "num_tokens"]],
         "batch_size": batch_size
     },
     "trainer": {
