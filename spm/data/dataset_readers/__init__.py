@@ -8,3 +8,4 @@
 
 from spm.data.dataset_readers.snli import SnliReader
 from spm.data.dataset_readers.sst2 import GLUESST2DatasetReader
+from spm.data.dataset_readers.quora import QuoraReader
