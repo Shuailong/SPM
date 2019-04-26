@@ -27,9 +27,10 @@ class SnliReader(DatasetReader):
     """
     Reads a file from the Stanford Natural Language Inference (SNLI) dataset.  This data is
     formatted as jsonl, one json-formatted instance per line.  The keys in the data are
-    "gold_label", "sentence1", and "sentence2".  We convert these keys into fields named "label",
-    "premise" and "hypothesis", along with a metadata field containing the tokenized strings of the
-    premise and hypothesis.
+    "gold_label", "sentence1", and "sentence2".  We convert these keys into fields named "tokens"
+    and "label", along with a metadata field containing the tokenized strings of the
+    premise and hypothesis. The "token" fields contains the concatenation of tokens of premise and
+    hypothesis, joined by "[SEP]" token, to be used in BERT model.
 
     Parameters
     ----------
