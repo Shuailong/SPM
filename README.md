@@ -30,7 +30,9 @@ File structure
 
 </pre>
 
-Links: [elmo](https://github.com/allenai/allennlp/blob/master/tutorials/how_to/elmo.md), [glove](https://nlp.stanford.edu/projects/glove/), [snli](https://nlp.stanford.edu/projects/snli/), [bert model](https://github.com/huggingface/pytorch-pretrained-BERT/blob/master/pytorch_pretrained_bert/modeling.py), [bert vocab](https://github.com/huggingface/pytorch-pretrained-BERT/blob/master/pytorch_pretrained_bert/tokenization.py)
+Links:
+- pretrained models: [glove](https://nlp.stanford.edu/projects/glove/), [elmo](https://github.com/allenai/allennlp/blob/master/tutorials/how_to/elmo.md), [bert model](https://github.com/huggingface/pytorch-pretrained-BERT/blob/master/pytorch_pretrained_bert/modeling.py), [bert vocab](https://github.com/huggingface/pytorch-pretrained-BERT/blob/master/pytorch_pretrained_bert/tokenization.py)
+- data: [snli](https://nlp.stanford.edu/projects/snli/), [mnli](https://www.nyu.edu/projects/bowman/multinli/), [quora](https://data.quora.com/First-Quora-Dataset-Release-Question-Pairs), [quora-split](https://drive.google.com/file/d/0B0PlTAo--BnaQWlsZl9FZ3l1c28/view), [sts-2014](http://alt.qcri.org/semeval2014/task10/index.php?id=data-and-tools), [wikiqa](http://aka.ms/WikiQA), [trecqa](http://aka.ms/WikiQA)
 
 #### Installation
 Follow the instructions [here](https://github.com/allenai/allennlp).
@@ -51,6 +53,10 @@ Make sure to `cd` to the project root dir.
 Train
 ```bash
 allennlp train experiments/snli/bert_slstm.jsonnet -s models/snli/bert-slstm --include-package spm
+```
+on docker
+```bash
+nvidia-docker run --rm -v "/home/shuailong/SPM:/mnt/SPM" shuailongliang/spm:latest train -s /mnt/SPM/models/20190417-bert-base-finetune-slstm /mnt/SPM/experiments/snli/bert_slstm.jsonnet --include-package spm
 ```
 Evaluation _(optional, used when training is interrupted by user)_
 ```bash
