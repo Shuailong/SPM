@@ -1,12 +1,9 @@
-// Configuration for the ESIM model with ELMo, modified slightly from
-// the version included in "Deep Contextualized Word Representations",
-// (https://arxiv.org/abs/1802.05365).  Compared to the version in this paper,
-// this configuration only includes one layer of ELMo representations
-// and removes GloVe embeddings.
-//
-// There is a trained model available at https://s3-us-west-2.amazonaws.com/allennlp/models/esim-elmo-2018.05.17.tar.gz
-// with test set accuracy of 88.5%, compared to the single model reported
-// result of 88.7 +/- 0.17.
+local run_env = 'docker';
+
+local batch_size = 32; //  GPU mem required
+local data_root = if run_env == 'local' then 'data' else '/mnt/SPM/data';
+local feature_size = 1024;
+
 {
   "dataset_reader": {
     "type": "snli",
@@ -16,9 +13,9 @@
      }
     }
   },
-  "train_data_path": "./data/snli/snli_1.0_train.jsonl",
-  "validation_data_path": "./data/snli/snli_1.0_dev.jsonl",
-  "test_data_path": "./data/snli/snli_1.0_test.jsonl",
+  "train_data_path": data_root + "/snli/snli_1.0_train.jsonl",
+  "validation_data_path": data_root + "/snli/snli_1.0_dev.jsonl",
+  "test_data_path": data_root + "/snli/snli_1.0_test.jsonl",
   "model": {
     "type": "esim",
     "dropout": 0.5,
@@ -26,8 +23,8 @@
       "token_embedders": {
         "elmo":{
             "type": "elmo_token_embedder",
-            "options_file": "./data/elmo/elmo_2x4096_512_2048cnn_2xhighway_options.json",
-            "weight_file": "./data/elmo/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5",
+            "options_file": data_root + "/elmo/elmo_2x4096_512_2048cnn_2xhighway_options.json",
+            "weight_file": data_root + "/elmo/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5",
             "do_layer_norm": false,
             "dropout": 0.0
         }
@@ -35,7 +32,7 @@
     },
     "encoder": {
       "type": "lstm",
-      "input_size": 1024,
+      "input_size": feature_size,
       "hidden_size": 300,
       "num_layers": 1,
       "bidirectional": true
@@ -79,7 +76,7 @@
   "iterator": {
     "type": "bucket",
     "sorting_keys": [["premise", "num_tokens"], ["hypothesis", "num_tokens"]],
-    "batch_size": 32
+    "batch_size": batch_size
   },
   "trainer": {
     "optimizer": {
@@ -91,7 +88,7 @@
     "num_epochs": 75,
     "grad_norm": 10.0,
     "patience": 5,
-    "cuda_device": 0,
+    "cuda_device": 4,
     "learning_rate_scheduler": {
       "type": "reduce_on_plateau",
       "factor": 0.5,
