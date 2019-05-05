@@ -16,7 +16,7 @@ import torch.nn.init as init
 
 from allennlp.common.registrable import FromParams
 from allennlp.modules import LayerNorm
-from spm.modules.utils import max_with_mask
+from allennlp.nn.util import masked_max
 
 
 class SentencePairSLSTMEncoderZY(nn.Module, FromParams):
@@ -119,8 +119,8 @@ class SentencePairSLSTMEncoderZY(nn.Module, FromParams):
         # change according to Zeeeyang's suggestion
         s1_mean = s1_hiddens.mean(1)
         s2_mean = s2_hiddens.mean(1)
-        s1_max = max_with_mask(s1_hiddens, s1_mask)
-        s2_max = max_with_mask(s2_hiddens, s2_mask)
+        s1_max = masked_max(s1_hiddens, s1_mask.unsqueeze(-1))
+        s2_max = masked_max(s2_hiddens, s2_mask.unsqueeze(-1))
 
         # Only use the last layer
         combined = torch.cat([s1_max,

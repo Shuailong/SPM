@@ -21,7 +21,7 @@ import torch.nn.functional as F
 from allennlp.nn.initializers import block_orthogonal
 from allennlp.common.registrable import FromParams
 from allennlp.modules import LayerNorm
-from spm.modules.utils import mean_with_mask
+from allennlp.nn.util import masked_mean, masked_softmax
 
 
 class SLSTMEncoder(nn.Module, FromParams):
@@ -86,7 +86,8 @@ class SLSTMEncoder(nn.Module, FromParams):
     @overrides
     def forward(self,  # type: ignore
                 inputs: torch.FloatTensor,
-                mask: torch.FloatTensor):
+                mask: torch.FloatTensor,
+                token_type_ids: torch.FloatTensor):
         """
         Parameters
         ----------
@@ -94,19 +95,18 @@ class SLSTMEncoder(nn.Module, FromParams):
             A tensor of shape (batch_size, seq_len, hidden_size)
         mask : ``torch.FloatTensor``
             A tensor of shape (batch_size, seq_len)
+        token_type_ids: ``torch.FloatTensor``
+            A tensor of shape (batch_size, seq_len)
         Returns
         -------
         An output dictionary consisting of:
         hiddens: ``torch.FloatTensor``
             A tensor of shape (batch_size, seq_len, hidden_size)
-        global_hiddens: ``torch.FloatTensor``
-            A tensor of shape (batch_size, hidden_size)
         """
         batch_size, _, hidden_size = inputs.size()
 
         # filters for attention
-        mask_softmax_score = mask * 1e25 - 1e25
-        mask_softmax_score = mask_softmax_score.unsqueeze(-1)
+        mask = mask.unsqueeze(-1)
 
         ############################################################################
         # Init states
@@ -115,14 +115,14 @@ class SLSTMEncoder(nn.Module, FromParams):
         hidden = torch.rand_like(inputs) - 0.5
         cell = torch.rand_like(inputs) - 0.5
 
-        global_hidden = mean_with_mask(hidden, mask)
-        global_cell = mean_with_mask(cell, mask)
+        global_hidden = masked_mean(hidden, mask)
+        global_cell = masked_mean(cell, mask)
 
         for _ in range(self.num_layers):
             #############################
             # update global node states #
             #############################
-            hidden_avg = mean_with_mask(hidden, mask)
+            hidden_avg = masked_mean(hidden, mask)
 
             projected_input = self.g_input_linearity(global_hidden)
             projected_hiddens = self.g_hidden_linearity(hidden)
@@ -138,13 +138,13 @@ class SLSTMEncoder(nn.Module, FromParams):
                 self.layer_norms[2](projected_input[:, 2 * hidden_size: 3 * hidden_size] +
                                     projected_avg[:, 1 * hidden_size: 2 * hidden_size]))
 
-            # softmax on each hidden dimension
-            hidden_gates = hidden_gates + mask_softmax_score
-            # Combine
-            gates_normalized = F.softmax(
-                torch.cat([torch.unsqueeze(input_gate, dim=1), hidden_gates], dim=1), dim=1)
+            masked_hidden_gates = hidden_gates.masked_fill(
+                (1 - mask).byte(), -1e32)
+            all_gates = torch.cat(
+                [input_gate.unsqueeze(1), masked_hidden_gates], dim=1)
+            gates_normalized = torch.nn.functional.softmax(
+                masked_vector, dim=1)
 
-            # split the softmax scores
             input_gate_normalized = gates_normalized[:, 0, :]
             hidden_gates_normalized = gates_normalized[:, 1:, :]
 
@@ -204,7 +204,7 @@ class SLSTMEncoder(nn.Module, FromParams):
                 global_gate * global_cell.unsqueeze(1).expand_as(global_gate)
 
             hidden = output_gate * torch.tanh(cell)
-            hidden = hidden * mask.unsqueeze(-1)
-            cell = cell * mask.unsqueeze(-1)
+            hidden = hidden * mask
+            cell = cell * mask
 
         return hidden

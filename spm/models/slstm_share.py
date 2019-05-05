@@ -17,10 +17,8 @@ from allennlp.modules import FeedForward
 from allennlp.modules import Seq2SeqEncoder
 from allennlp.modules import TextFieldEmbedder
 from allennlp.nn import InitializerApplicator, RegularizerApplicator
-from allennlp.nn.util import get_text_field_mask
+from allennlp.nn.util import get_text_field_mask, masked_max
 from allennlp.training.metrics import CategoricalAccuracy
-
-from spm.modules.utils import max_with_mask
 
 
 @Model.register("slstm_share")
@@ -137,8 +135,9 @@ class SLSTMShare(Model):
         premise_hidden = hiddens[:, :premise_seq_len, :]
         hypothesis_hidden = hiddens[:, premise_seq_len:, :]
 
-        premise_feats = max_with_mask(premise_hidden, premise_mask)
-        hypothesis_feats = max_with_mask(hypothesis_hidden, hypothesis_mask)
+        premise_feats = masked_max(premise_hidden, premise_mask.unsqueeze(-1))
+        hypothesis_feats = masked_max(
+            hypothesis_hidden, hypothesis_mask.unsqueeze(-1))
 
         fusion = torch.cat([premise_feats,
                             hypothesis_feats,

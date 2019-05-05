@@ -17,10 +17,8 @@ from allennlp.modules import FeedForward, InputVariationalDropout
 from allennlp.modules import TextFieldEmbedder
 from allennlp.modules import Seq2SeqEncoder
 from allennlp.nn import InitializerApplicator, RegularizerApplicator
-from allennlp.nn.util import get_text_field_mask
+from allennlp.nn.util import get_text_field_mask, masked_max
 from allennlp.training.metrics import CategoricalAccuracy
-
-from spm.modules.utils import max_with_mask
 
 
 @Model.register("encoder_sep")
@@ -162,9 +160,10 @@ class EncoderSep(Model):
         #     hypothesis_feats = output_hypothesis['global_hidden'] + \
         #         max_with_mask(output_hypothesis['hiddens'], hypothesis_mask)
         # else:
-            # lstm or transformer
-        premise_feats = max_with_mask(output_premise, premise_mask)
-        hypothesis_feats = max_with_mask(output_hypothesis, hypothesis_mask)
+        # lstm or transformer
+        premise_feats = masked_max(output_premise, premise_mask.unsqueeze(-1))
+        hypothesis_feats = masked_max(
+            output_hypothesis, hypothesis_mask.unsqueeze(-1))
 
         fusion = torch.cat([premise_feats,
                             hypothesis_feats,
