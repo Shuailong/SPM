@@ -50,6 +50,7 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
     "evaluate_on_test": true,
     "model": {
         "type": "bert_sep_sequence_classifier",
+        "metrics": "f1",
         "bert": {
             "allow_unmatched_keys": true,
             "embedder_to_indexer_map": {

@@ -17,8 +17,7 @@ from allennlp.modules import FeedForward
 from allennlp.modules import Seq2SeqEncoder
 from allennlp.modules import TextFieldEmbedder
 from allennlp.nn import InitializerApplicator, RegularizerApplicator
-from allennlp.training.metrics import CategoricalAccuracy
-from spm.modules.utils import max_with_mask
+from allennlp.training.metrics import CategoricalAccuracy, F1Measure
 
 
 @Model.register("bert_sequence_classifier")
@@ -45,32 +44,39 @@ class BertSequenceClassifier(Model):
                  bert: TextFieldEmbedder,
                  classifier: FeedForward,
                  dropout: float = 0.1,
+                 num_labels: int = None,
+                 metrics: List[str] = ['acc'],
                  initializer: InitializerApplicator = InitializerApplicator(),
                  regularizer: Optional[RegularizerApplicator] = None) -> None:
         super().__init__(vocab, regularizer)
 
         self._bert = bert
         self._dropout = torch.nn.Dropout(dropout)
+        self._classifier = classifier
+        if num_labels is None:
+            self._num_labels = vocab.get_vocab_size(namespace="labels")
+        else:
+            self._num_labels = num_labels
+
         self._pooler = FeedForward(input_dim=bert.get_output_dim(),
                                    num_layers=1,
                                    hidden_dims=bert.get_output_dim(),
                                    activations=torch.tanh)
-        self._classifier = classifier
-        self._num_labels = vocab.get_vocab_size(namespace="labels")
-
         check_dimensions_match(bert.get_output_dim(), classifier.get_input_dim(),
                                "bert output dim", "classifier input dim")
         check_dimensions_match(classifier.get_output_dim(), self._num_labels,
                                "classifier output dim", "number of labels")
-
+        self.metrics = metrics
         self._accuracy = CategoricalAccuracy()
+        if 'f1' in self.metrics:
+            self._f1 = F1Measure(positive_label=1)
         self._loss = torch.nn.CrossEntropyLoss()
 
         initializer(self)
 
     @overrides
     def forward(self,  # type: ignore
-                tokens: Dict[str, torch.LongTensor],
+                tokens: Dict[str, torch.LongTensor] = None,
                 label: torch.IntTensor = None,
                 metadata: List[Dict[str, Any]
                                ] = None  # pylint:disable=unused-argument
@@ -114,10 +120,20 @@ class BertSequenceClassifier(Model):
             loss = self._loss(
                 label_logits.view(-1, self._num_labels), label.view(-1))
             self._accuracy(label_logits, label)
+            if 'f1' in self.metrics:
+                self._f1(label_logits, label)
             output_dict["loss"] = loss
 
         return output_dict
 
     @overrides
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
-        return {'accuracy': self._accuracy.get_metric(reset)}
+
+        acc = self._accuracy.get_metric(reset)
+        metrics = {'accuracy': acc}
+        if 'f1' in self.metrics:
+            p, r, f1 = self._f1.get_metric(reset)
+            metrics['precision'] = p
+            metrics['recall'] = r
+            metrics['f1'] = f1
+        return metrics
