@@ -13,7 +13,7 @@ class TestESIM(ModelTestCase):
 
     def setUp(self):
         super(TestESIM, self).setUp()
-        self.set_up_model(self.FIXTURES_ROOT / 'esim_bert.jsonnet',
+        self.set_up_model(self.FIXTURES_ROOT / 'bert_esim.jsonnet',
                           self.FIXTURES_ROOT / 'snli_5.jsonl')
 
     def test_forward_pass_runs_correctly(self):
@@ -21,10 +21,3 @@ class TestESIM(ModelTestCase):
         output_dict = self.model(**training_tensors)
         assert_almost_equal(
             numpy.sum(output_dict["label_probs"][0].data.numpy(), -1), 1, decimal=6)
-
-    def test_model_can_train_save_and_load(self):
-        self.ensure_model_can_train_save_and_load(
-            self.param_file, cuda_device=0)
-
-    def test_batch_predictions_are_consistent(self):
-        self.ensure_batch_predictions_are_consistent()

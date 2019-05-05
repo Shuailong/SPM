@@ -1,7 +1,7 @@
 local bert_type = 'base';
 local run_env = 'local';
 
-local batch_size_base = 1; //  GPU mem required
+local batch_size_base = 5; //  GPU mem required
 local batch_size_large = 20; //  GPU mem required
 local feature_size_base = 768;
 local feature_size_large = 1024;
@@ -48,6 +48,7 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
       }
     },
     "encoder": {
+      "type": "lstm",
       "input_size": feature_size,
       "hidden_size": 300,
       "num_layers": 1,
@@ -61,6 +62,7 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
       "activations": "relu"
     },
     "inference_encoder": {
+      "type": "lstm",
       "input_size": 300,
       "hidden_size": 300,
       "num_layers": 1,
@@ -100,10 +102,10 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
     },
     "validation_metric": "+accuracy",
     "num_serialized_models_to_keep": 2,
-    "num_epochs": 75,
+    "num_epochs": 3,
     "grad_norm": 10.0,
     "patience": 5,
-    "cuda_device": 0,
+    "cuda_device": -1,
     "learning_rate_scheduler": {
       "type": "reduce_on_plateau",
       "factor": 0.5,
