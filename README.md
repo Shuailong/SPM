@@ -69,3 +69,13 @@ To visualize the log by `tensorboard`:
 ```bash
 tensorboard --logdir models/snli
 ```
+
+#### Experiments
+
+| Model                 | MRPC(F1/acc) |
+| --------------------- | :----------: |
+| BERT-Base             |  88.9/84.8   |
+| BERT-Large            |  89.3/85.4   |
+| BERT-Base(reproduce)  |  88.5/84.3   |
+| BERT-Large(reproduce) |  89.3/85.2   |
+| ---                   |              |
