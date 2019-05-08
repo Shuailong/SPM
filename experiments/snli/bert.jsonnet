@@ -1,5 +1,9 @@
 local bert_type = 'base';
-local run_env = 'local';
+local run_env = 'docker';
+
+local epochs = 3;
+local train_samples = 549367;
+local learning_rate = 2e-5;
 
 local batch_size_base = 32; // 8g GPU mem required
 local batch_size_large = 20; // 16g GPU mem required
@@ -58,20 +62,30 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
         "batch_size": batch_size
     },
     "trainer": {
+        // "optimizer": {
+        //     "type": "adam",
+        //     "lr": 2e-5
+        // },
         "optimizer": {
-            "type": "adam",
-            "lr": 2e-5
+            "type": "bert_adam",
+            "lr": learning_rate,
+            "t_total": train_samples/batch_size*epochs,
+            "warmup": 0.1,
+            "weight_decay": 1e-2,
+            "parameter_groups": [
+                [["bias", "LayerNorm.bias", "LayerNorm.weight"], {"weight_decay": 0.0}],
+            ]
         },
         "validation_metric": "+accuracy",
         "num_serialized_models_to_keep": 1,
-        "num_epochs": 3,
-        "grad_norm": 10.0,
+        "num_epochs": epochs,
+        // "grad_norm": 10.0,
         "cuda_device": 0,
-        "learning_rate_scheduler": {
-            "type": "reduce_on_plateau",
-            "factor": 0.5,
-            "mode": "max",
-            "patience": 0
-        }
+        // "learning_rate_scheduler": {
+        //     "type": "reduce_on_plateau",
+        //     "factor": 0.5,
+        //     "mode": "max",
+        //     "patience": 0
+        // }
     }
 }
