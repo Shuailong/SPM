@@ -1,3 +1,14 @@
+local run_env = 'local';
+local mode = 'merge'; // 'sep'
+
+local epochs = 3;
+local learning_rate = 4e-4;
+local batch_size = 5; // xxg GPU mem required
+local elmo_projection_dim = 300;
+
+local hidden_size = if elmo_projection_dim == null then 1024  else elmo_projection_dim;
+local data_root = if run_env == 'local' then 'data' else '/mnt/SPM/data';
+
 {
     "dataset_reader": {
         "type": "snli",
@@ -7,31 +18,31 @@
             }
         }
     },
-    "train_data_path": "./data/snli/snli_1.0_train.jsonl",
-    "validation_data_path": "./data/snli/snli_1.0_dev.jsonl",
-    "test_data_path": "./data/snli/snli_1.0_test.jsonl",
+    "train_data_path": "./tests/fixtures/snli_1.0_sample.jsonl",
+    "validation_data_path": "./tests/fixtures/snli_1.0_sample.jsonl",
+    "test_data_path": "./tests/fixtures/snli_1.0_sample.jsonl",
     "evaluate_on_test": true,
     "model": {
-        "type": "encoder_sep",
+        "type": "slstm_classifier",
+        "mode": mode,
         "dropout": 0.5,
         "text_field_embedder": {
             "token_embedders": {
                 "elmo": {
                     "type": "elmo_token_embedder",
-                    "options_file": "./data/elmo/elmo_2x4096_512_2048cnn_2xhighway_options.json",
-                    "weight_file": "./data/elmo/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5",
-                    "projection_dim": 300
-                },
+                    "options_file": data_root + "/elmo/elmo_2x4096_512_2048cnn_2xhighway_options.json",
+                    "weight_file": data_root + "/elmo/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5",
+                    "projection_dim": elmo_projection_dim
+                }
             }
         },
-        "has_global": true,
         "encoder": {
-            "type": "slstm"
-            "hidden_size": 300,
+            "type": "slstm",
+            "hidden_size": hidden_size,
             "num_layers": 7
         },
         "output_feedforward": {
-            "input_dim": 300 * 4,
+            "input_dim": hidden_size * 4,
             "num_layers": 1,
             "hidden_dims": 300,
             "activations": "relu",
@@ -48,16 +59,20 @@
         "type": "bucket",
         "sorting_keys": [["premise", "num_tokens"],
                          ["hypothesis", "num_tokens"]],
-        "batch_size": 8
+        "batch_size": batch_size
     },
     "trainer": {
         "optimizer": {
             "type": "adam",
-            "lr": 0.0004
+            "lr": learning_rate,
+            "weight_decay": 1e-2,
+            "parameter_groups": [
+                [["bias", "LayerNorm.bias", "LayerNorm.weight"], {"weight_decay": 0.0}],
+            ]
         },
         "validation_metric": "+accuracy",
-        "num_serialized_models_to_keep": 2,
-        "num_epochs": 75,
+        "num_serialized_models_to_keep": 1,
+        "num_epochs": epochs,
         "grad_norm": 10.0,
         "patience": 5,
         "cuda_device": 0,

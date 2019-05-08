@@ -21,7 +21,7 @@ import torch.nn.functional as F
 from allennlp.nn.initializers import block_orthogonal
 from allennlp.common.registrable import FromParams
 from allennlp.modules import LayerNorm
-from allennlp.nn.util import masked_mean, masked_softmax
+from allennlp.nn.util import masked_mean
 
 
 class SLSTMEncoder(nn.Module, FromParams):
@@ -86,16 +86,13 @@ class SLSTMEncoder(nn.Module, FromParams):
     @overrides
     def forward(self,  # type: ignore
                 inputs: torch.FloatTensor,
-                mask: torch.FloatTensor,
-                token_type_ids: torch.FloatTensor):
+                mask: torch.FloatTensor):
         """
         Parameters
         ----------
         inputs : ``torch.FloatTensor``
             A tensor of shape (batch_size, seq_len, hidden_size)
         mask : ``torch.FloatTensor``
-            A tensor of shape (batch_size, seq_len)
-        token_type_ids: ``torch.FloatTensor``
             A tensor of shape (batch_size, seq_len)
         Returns
         -------
@@ -115,14 +112,14 @@ class SLSTMEncoder(nn.Module, FromParams):
         hidden = torch.rand_like(inputs) - 0.5
         cell = torch.rand_like(inputs) - 0.5
 
-        global_hidden = masked_mean(hidden, mask)
-        global_cell = masked_mean(cell, mask)
+        global_hidden = masked_mean(hidden, mask, dim=1)
+        global_cell = masked_mean(cell, mask, dim=1)
 
         for _ in range(self.num_layers):
             #############################
             # update global node states #
             #############################
-            hidden_avg = masked_mean(hidden, mask)
+            hidden_avg = masked_mean(hidden, mask, dim=1)
 
             projected_input = self.g_input_linearity(global_hidden)
             projected_hiddens = self.g_hidden_linearity(hidden)
@@ -143,7 +140,7 @@ class SLSTMEncoder(nn.Module, FromParams):
             all_gates = torch.cat(
                 [input_gate.unsqueeze(1), masked_hidden_gates], dim=1)
             gates_normalized = torch.nn.functional.softmax(
-                masked_vector, dim=1)
+                all_gates, dim=1)
 
             input_gate_normalized = gates_normalized[:, 0, :]
             hidden_gates_normalized = gates_normalized[:, 1:, :]

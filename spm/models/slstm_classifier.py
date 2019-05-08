@@ -21,10 +21,10 @@ from allennlp.nn.util import get_text_field_mask, masked_max
 from allennlp.training.metrics import CategoricalAccuracy
 
 
-@Model.register("encoder_sep")
-class EncoderSep(Model):
+@Model.register("slstm_classifier")
+class SLSTMClassifier(Model):
     """
-    This ``Model`` implements the EncoderSep model...
+    This ``Model`` implements the SLSTMClassifier model...
 
     Parameters
     ----------
@@ -54,8 +54,7 @@ class EncoderSep(Model):
                  encoder: Seq2SeqEncoder,
                  output_feedforward: FeedForward,
                  output_logit: FeedForward,
-                 has_global: bool = False,
-                 max_len: int = 60,
+                 mode: str = 'merge',
                  dropout: float = 0.5,
                  rnn_input_dropout: float = 0,
                  initializer: InitializerApplicator = InitializerApplicator(),
@@ -64,7 +63,6 @@ class EncoderSep(Model):
 
         self._text_field_embedder = text_field_embedder
         self._encoder = encoder
-        self.max_len = max_len
 
         if dropout:
             self.dropout = torch.nn.Dropout(dropout)
@@ -80,6 +78,7 @@ class EncoderSep(Model):
         self._output_logit = output_logit
 
         self._num_labels = vocab.get_vocab_size(namespace="labels")
+        self.mode = mode
 
         check_dimensions_match(text_field_embedder.get_output_dim(), encoder.get_input_dim(),
                                "text field embedding dim", "encoder input dim")
@@ -135,35 +134,28 @@ class EncoderSep(Model):
         premise_mask = get_text_field_mask(premise).float()
         hypothesis_mask = get_text_field_mask(hypothesis).float()
 
-        # truncate too long sequences
-        if self.max_len:
-            max_len = self.max_len
-            embedded_premise = embedded_premise[:, :max_len, :]
-            embedded_hypothesis = embedded_hypothesis[:, :max_len, :]
-            premise_mask = premise_mask[:, :max_len]
-            hypothesis_mask = hypothesis_mask[:, :max_len]
-
         # apply dropout for LSTM
         if self.rnn_input_dropout:
             embedded_premise = self.rnn_input_dropout(embedded_premise)
             embedded_hypothesis = self.rnn_input_dropout(embedded_hypothesis)
 
-        output_premise = self._encoder(
-            embedded_premise, premise_mask)
-        output_hypothesis = self._encoder(
-            embedded_hypothesis, hypothesis_mask)
+        if self.mode == 'merge':
+            premise_len = embedded_premise.size(1)
+            output = self._encoder(torch.cat([embedded_premise, embedded_hypothesis], dim=1),
+                                   torch.cat([premise_mask, hypothesis_mask], dim=1))
+            output_premise = output[:, :premise_len, :]
+            output_hypothesis = output[:, premise_len:, :]
+        else:
+            # self.mode == 'sep'
+            output_premise = self._encoder(
+                embedded_premise, premise_mask)
+            output_hypothesis = self._encoder(
+                embedded_hypothesis, hypothesis_mask)
 
-        # if self.has_global:
-        #     # slstm or star_transformer
-        #     premise_feats = output_premise['global_hidden'] + \
-        #         max_with_mask(output_premise['hiddens'], premise_mask)
-        #     hypothesis_feats = output_hypothesis['global_hidden'] + \
-        #         max_with_mask(output_hypothesis['hiddens'], hypothesis_mask)
-        # else:
-        # lstm or transformer
-        premise_feats = masked_max(output_premise, premise_mask.unsqueeze(-1))
+        premise_feats = masked_max(
+            output_premise, premise_mask.unsqueeze(-1), dim=1)
         hypothesis_feats = masked_max(
-            output_hypothesis, hypothesis_mask.unsqueeze(-1))
+            output_hypothesis, hypothesis_mask.unsqueeze(-1), dim=1)
 
         fusion = torch.cat([premise_feats,
                             hypothesis_feats,
