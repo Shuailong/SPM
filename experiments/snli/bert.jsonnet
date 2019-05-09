@@ -15,7 +15,7 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
 
 {
     "dataset_reader": {
-        "type": "snli-bert",
+        "type": "mysnli",
         "tokenizer": {
             "type": "word",
             "word_splitter": {
@@ -62,10 +62,6 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
         "batch_size": batch_size
     },
     "trainer": {
-        // "optimizer": {
-        //     "type": "adam",
-        //     "lr": 2e-5
-        // },
         "optimizer": {
             "type": "bert_adam",
             "lr": learning_rate,
@@ -79,13 +75,6 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
         "validation_metric": "+accuracy",
         "num_serialized_models_to_keep": 1,
         "num_epochs": epochs,
-        // "grad_norm": 10.0,
         "cuda_device": 0,
-        // "learning_rate_scheduler": {
-        //     "type": "reduce_on_plateau",
-        //     "factor": 0.5,
-        //     "mode": "max",
-        //     "patience": 0
-        // }
     }
 }
