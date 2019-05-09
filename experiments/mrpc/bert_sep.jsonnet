@@ -28,7 +28,7 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
     "numpy_seed": random_seed,
     "pytorch_seed": random_seed,
     "dataset_reader": {
-        "type": "mrpc-bert",
+        "type": "mrpc",
         "tokenizer": {
             "type": "word",
             "word_splitter": {
@@ -42,7 +42,7 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
             }
         },
         "skip_label_indexing": true,
-        "mode": "seperate"
+        "mode": "sep"
     },
     "train_data_path": data_root + "/glue/MRPC/train.tsv",
     "validation_data_path": data_root + "/glue/MRPC/dev.tsv",

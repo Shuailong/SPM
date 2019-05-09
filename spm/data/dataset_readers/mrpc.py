@@ -24,7 +24,7 @@ from allennlp.data.tokenizers import Tokenizer, WordTokenizer, Token
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-@DatasetReader.register("mrpc-bert")
+@DatasetReader.register("mrpc")
 class MRPCReader(DatasetReader):
     """
     Parameters
