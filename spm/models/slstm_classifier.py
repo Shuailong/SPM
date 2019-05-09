@@ -30,15 +30,15 @@ class SLSTMClassifier(Model):
     ----------
     vocab : ``Vocabulary``
     text_field_embedder : ``TextFieldEmbedder``
-        Used to embed the ``premise`` and ``hypothesis`` ``TextFields`` we get as input to the
+        Used to embed the ``s1`` and ``s2`` ``TextFields`` we get as input to the
         model.
     embedding_project: ``Feedforward``, optional
         Used to cast ELMo embeddings (1024) to lower dimensions for computation efficiency.
         (may decrease performance?)
     encoder : ``Seq2SeqEncoder``
-        Used to encode the premise and hypothesis using SLSTM and GNN.
+        Used to encode the s1 and s2 using SLSTM and GNN.
     output_feedforward : ``FeedForward``
-        Used to prepare the concatenated premise and hypothesis for prediction.
+        Used to prepare the concatenated s1 and s2 for prediction.
     output_logit : ``FeedForward``
         This feedforward network computes the output logits.
     dropout : ``float``, optional (default=0.5)
@@ -96,8 +96,8 @@ class SLSTMClassifier(Model):
 
     @overrides
     def forward(self,  # type: ignore
-                premise: Dict[str, torch.LongTensor],
-                hypothesis: Dict[str, torch.LongTensor],
+                s1: Dict[str, torch.LongTensor],
+                s2: Dict[str, torch.LongTensor],
                 label: torch.IntTensor = None,
                 metadata: List[Dict[str, Any]
                                ] = None  # pylint:disable=unused-argument
@@ -106,15 +106,15 @@ class SLSTMClassifier(Model):
         """
         Parameters
         ----------
-        premise : Dict[str, torch.LongTensor]
+        s1 : Dict[str, torch.LongTensor]
             From a ``TextField``
-        hypothesis : Dict[str, torch.LongTensor]
+        s2 : Dict[str, torch.LongTensor]
             From a ``TextField``
         label : torch.IntTensor, optional (default = None)
             From a ``LabelField``
         metadata : ``List[Dict[str, Any]]``, optional, (default = None)
-            Metadata containing the original tokenization of the premise and
-            hypothesis with 'premise_tokens' and 'hypothesis_tokens' keys respectively.
+            Metadata containing the original tokenization of the s1 and s2
+            with 's1_tokens' and 's2_tokens' keys respectively.
 
         Returns
         -------
@@ -129,38 +129,38 @@ class SLSTMClassifier(Model):
         loss : torch.FloatTensor, optional
             A scalar loss to be optimised.
         """
-        embedded_premise = self._text_field_embedder(premise)
-        embedded_hypothesis = self._text_field_embedder(hypothesis)
-        premise_mask = get_text_field_mask(premise).float()
-        hypothesis_mask = get_text_field_mask(hypothesis).float()
+        embedded_s1 = self._text_field_embedder(s1)
+        embedded_s2 = self._text_field_embedder(s2)
+        s1_mask = get_text_field_mask(s1).float()
+        s2_mask = get_text_field_mask(s2).float()
 
         # apply dropout for LSTM
         if self.rnn_input_dropout:
-            embedded_premise = self.rnn_input_dropout(embedded_premise)
-            embedded_hypothesis = self.rnn_input_dropout(embedded_hypothesis)
+            embedded_s1 = self.rnn_input_dropout(embedded_s1)
+            embedded_s2 = self.rnn_input_dropout(embedded_s2)
 
         if self.mode == 'merge':
-            premise_len = embedded_premise.size(1)
-            output = self._encoder(torch.cat([embedded_premise, embedded_hypothesis], dim=1),
-                                   torch.cat([premise_mask, hypothesis_mask], dim=1))
-            output_premise = output[:, :premise_len, :]
-            output_hypothesis = output[:, premise_len:, :]
+            s1_len = embedded_s1.size(1)
+            output = self._encoder(torch.cat([embedded_s1, embedded_s2], dim=1),
+                                   torch.cat([s1_mask, s2_mask], dim=1))
+            output_s1 = output[:, :s1_len, :]
+            output_s2 = output[:, s1_len:, :]
         else:
             # self.mode == 'sep'
-            output_premise = self._encoder(
-                embedded_premise, premise_mask)
-            output_hypothesis = self._encoder(
-                embedded_hypothesis, hypothesis_mask)
+            output_s1 = self._encoder(
+                embedded_s1, s1_mask)
+            output_s2 = self._encoder(
+                embedded_s2, s2_mask)
 
-        premise_feats = masked_max(
-            output_premise, premise_mask.unsqueeze(-1), dim=1)
-        hypothesis_feats = masked_max(
-            output_hypothesis, hypothesis_mask.unsqueeze(-1), dim=1)
+        s1_feats = masked_max(
+            output_s1, s1_mask.unsqueeze(-1), dim=1)
+        s2_feats = masked_max(
+            output_s2, s2_mask.unsqueeze(-1), dim=1)
 
-        fusion = torch.cat([premise_feats,
-                            hypothesis_feats,
-                            torch.abs(premise_feats - hypothesis_feats),
-                            premise_feats * hypothesis_feats], dim=-1)
+        fusion = torch.cat([s1_feats,
+                            s2_feats,
+                            torch.abs(s1_feats - s2_feats),
+                            s1_feats * s2_feats], dim=-1)
         if self.dropout:
             fusion = self.dropout(fusion)
 

@@ -12,7 +12,8 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
 
 {
   "dataset_reader": {
-    "type": "snli-bert",
+    "type": "mysnli",
+    "mode": "merge",
     "tokenizer": {
       "type": "word",
       "word_splitter": {

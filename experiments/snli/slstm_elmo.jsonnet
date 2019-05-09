@@ -2,7 +2,7 @@
 local run_env = 'local';
 local cuda_device = 0;
 # model
-local mode = 'merge'; // 'sep'
+local mode = 'sep'; // 'sep'
 local elmo_projection_dim = null;
 # training
 local epochs = 75;
@@ -14,7 +14,8 @@ local data_root = if run_env == 'local' then 'data' else '/mnt/SPM/data';
 
 {
     "dataset_reader": {
-        "type": "snli",
+        "type": "mysnli",
+        "mode": "sep",
         "token_indexers": {
             "elmo": {
                 "type": "elmo_characters"
@@ -35,7 +36,9 @@ local data_root = if run_env == 'local' then 'data' else '/mnt/SPM/data';
                     "type": "elmo_token_embedder",
                     "options_file": data_root + "/elmo/elmo_2x4096_512_2048cnn_2xhighway_options.json",
                     "weight_file": data_root + "/elmo/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5",
-                    "projection_dim": elmo_projection_dim
+                    "projection_dim": elmo_projection_dim,
+                    "do_layer_norm": false,
+                    "dropout": 0.1
                 }
             }
         },

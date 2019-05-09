@@ -22,7 +22,7 @@ from allennlp.data.tokenizers import Tokenizer, WordTokenizer, Token
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-@DatasetReader.register("snli-bert")
+@DatasetReader.register("mysnli")
 class SnliReader(DatasetReader):
     """
     Reads a file from the Stanford Natural Language Inference (SNLI) dataset.  This data is
@@ -43,11 +43,13 @@ class SnliReader(DatasetReader):
     def __init__(self,
                  tokenizer: Tokenizer = None,
                  token_indexers: Dict[str, TokenIndexer] = None,
+                 mode: str = "merge",
                  lazy: bool = False) -> None:
         super().__init__(lazy)
         self._tokenizer = tokenizer or WordTokenizer()
         self._token_indexers = token_indexers or {
             'tokens': SingleIdTokenIndexer()}
+        self.mode = mode
 
     @overrides
     def _read(self, file_path: str):
@@ -80,10 +82,15 @@ class SnliReader(DatasetReader):
         fields: Dict[str, Field] = {}
         premise_tokens = self._tokenizer.tokenize(premise)
         hypothesis_tokens = self._tokenizer.tokenize(hypothesis)
-        sentence_pair_tokens = premise_tokens + \
-            [Token("[SEP]")] + hypothesis_tokens
-        fields['tokens'] = TextField(
-            sentence_pair_tokens, self._token_indexers)
+
+        if self.mode == 'merge':
+            sentence_pair_tokens = premise_tokens + \
+                [Token("[SEP]")] + hypothesis_tokens
+            fields['tokens'] = TextField(
+                sentence_pair_tokens, self._token_indexers)
+        else:
+            fields['s1'] = TextField(premise_tokens, self._token_indexers)
+            fields['s2'] = TextField(hypothesis_tokens, self._token_indexers)
         if label:
             fields['label'] = LabelField(label)
 
