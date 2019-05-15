@@ -1,4 +1,6 @@
 # pylint: disable=no-self-use,invalid-name
+import os
+
 from allennlp.common.testing import ModelTestCase
 from allennlp.data.dataset import Batch
 from allennlp.data.fields import TextField
@@ -9,16 +11,21 @@ from allennlp.data.tokenizers.word_splitter import BertBasicWordSplitter
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.modules.token_embedders.bert_token_embedder import PretrainedBertEmbedder
 
+from spm import DATA_DIR as DATA_ROOT
+
 
 class TestBertEmbedder(ModelTestCase):
+    BERT_VOCAB_PATH = os.path.join(
+        DATA_ROOT, 'bert/bert-base-uncased-vocab.txt')
+    BERT_MODEL_PATH = os.path.join(
+        DATA_ROOT, 'bert/bert-base-uncased.tar.gz')
+
     def setUp(self):
         super().setUp()
 
-        vocab_path = 'data/bert/bert-base-uncased-vocab.txt'
-        model_path = 'data/bert/bert-base-uncased.tar.gz'
-        self.token_indexer = PretrainedBertIndexer(vocab_path)
+        self.token_indexer = PretrainedBertIndexer(self.BERT_VOCAB_PATH)
         self.token_embedder = PretrainedBertEmbedder(
-            model_path, requires_grad=True)
+            self.BERT_MODEL_PATH, requires_grad=True)
 
     def test_end_to_end(self):
         tokenizer = WordTokenizer(word_splitter=BertBasicWordSplitter())

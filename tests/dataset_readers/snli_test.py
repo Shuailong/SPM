@@ -2,6 +2,8 @@
 import pytest
 import pathlib
 import random
+import os
+
 from allennlp.common import Params
 from allennlp.common.util import ensure_list
 from allennlp.common.testing import ModelTestCase
@@ -15,18 +17,21 @@ from allennlp.data.vocabulary import Vocabulary
 from allennlp.modules.token_embedders.bert_token_embedder import PretrainedBertEmbedder
 
 from spm.data.dataset_readers import SnliReader
+from spm import DATA_DIR as DATA_ROOT
 
 
 class TestSNLIReader:
     FIXTURES_ROOT = (pathlib.Path(__file__).parent /
                      ".." / ".." / "tests" / "fixtures").resolve()
+    BERT_VOCAB_PATH = os.path.join(
+        DATA_ROOT, 'bert/bert-base-uncased-vocab.txt')
 
     @pytest.mark.parametrize("lazy", (True, False))
     def test_read(self, lazy):
         reader = SnliReader(
             tokenizer=WordTokenizer(word_splitter=BertBasicWordSplitter()),
             token_indexers={'bert': PretrainedBertIndexer(
-                pretrained_model="data/bert/bert-base-uncased-vocab.txt")},
+                pretrained_model=self.BERT_VOCAB_PATH)},
         )
 
         instances = reader.read(
@@ -35,8 +40,13 @@ class TestSNLIReader:
         example = instances[0]
         tokens = [t.text for t in example.fields['tokens'].tokens]
         label = example.fields['label'].label
-        print(label)
-        print(tokens)
+        weight = example.fields['weight'].weight
+        assert label == 'neutral'
+        assert weight == 1
+        assert instances[1].fields['weight'].weight == 0.5
+        assert instances[2].fields['weight'].weight == 1
+        assert tokens == ['a', 'person', 'on', 'a', 'horse', 'jumps', 'over', 'a', 'broken', 'down', 'airplane',
+                          '.', '[SEP]', 'a', 'person', 'is', 'training', 'his', 'horse', 'for', 'a', 'competition', '.']
         batch = Batch(instances)
         vocab = Vocabulary.from_instances(instances)
         batch.index_instances(vocab)

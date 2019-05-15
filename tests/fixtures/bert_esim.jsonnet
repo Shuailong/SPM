@@ -5,7 +5,7 @@ local batch_size_base = 5; //  GPU mem required
 local batch_size_large = 20; //  GPU mem required
 local feature_size_base = 768;
 local feature_size_large = 1024;
-local data_root = if run_env == 'local' then 'data' else '/mnt/SPM/data';
+local data_root = if run_env == 'local' then '/Users/handsome/Workspace/data' else '/mnt/SPM/data';
 local batch_size = if bert_type == 'base' then batch_size_base else batch_size_large;
 local feature_size = if bert_type == 'base' then feature_size_base else feature_size_large;
 

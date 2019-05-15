@@ -7,6 +7,9 @@
 # @Last Modified time: 2019-03-24 17:09:22
 
 # pylint: disable=wildcard-import
-from spm.models import *
-from spm.modules import *
-from spm.data import *
+import os
+
+DATA_DIR = (
+    os.getenv('SPM_DATA') or
+    os.path.join(PosixPath(__file__).absolute().parents[1].as_posix(), 'data')
+)

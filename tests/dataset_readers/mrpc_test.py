@@ -1,25 +1,30 @@
 # pylint: disable=no-self-use,invalid-name
 import pytest
 import pathlib
+import os
 
-from spm.data.dataset_readers import MRPCReader
 from allennlp.common.util import ensure_list
 from allennlp.common.testing import AllenNlpTestCase
 from allennlp.data.tokenizers import WordTokenizer
 from allennlp.data.tokenizers.word_splitter import BertBasicWordSplitter, JustSpacesWordSplitter
 from allennlp.data.token_indexers.wordpiece_indexer import PretrainedBertIndexer
 
+from spm.data.dataset_readers import MRPCReader
+from spm import DATA_DIR as DATA_ROOT
+
 
 class TestMRPCReader():
 
     FIXTURES_ROOT = (pathlib.Path(__file__).parent /
                      ".." / ".." / "tests" / "fixtures").resolve()
+    BERT_VOCAB_PATH = os.path.join(
+        DATA_ROOT, 'bert/bert-base-uncased-vocab.txt')
 
     @pytest.mark.parametrize("lazy", (True, False))
     def test_read_from_file(self, lazy):
         reader = MRPCReader(tokenizer=WordTokenizer(word_splitter=JustSpacesWordSplitter()),
                             token_indexers={"bert":
-                                            PretrainedBertIndexer(pretrained_model='data/bert/bert-base-uncased-vocab.txt')},
+                                            PretrainedBertIndexer(pretrained_model=self.BERT_VOCAB_PATH)},
                             lazy=lazy,
                             mode='seperate',
                             skip_label_indexing=False)
@@ -51,7 +56,7 @@ class TestMRPCReader():
     def test_read_from_file(self, lazy):
         reader = MRPCReader(tokenizer=WordTokenizer(word_splitter=JustSpacesWordSplitter()),
                             token_indexers={"bert":
-                                            PretrainedBertIndexer(pretrained_model='data/bert/bert-base-uncased-vocab.txt')},
+                                            PretrainedBertIndexer(pretrained_model=self.BERT_VOCAB_PATH)},
                             lazy=lazy,
                             skip_label_indexing=False,
                             mode='merge')

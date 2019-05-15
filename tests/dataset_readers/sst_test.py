@@ -2,6 +2,8 @@
 import pytest
 import pathlib
 import random
+import os
+
 from allennlp.common import Params
 from allennlp.common.util import ensure_list
 from allennlp.common.testing import ModelTestCase
@@ -14,20 +16,22 @@ from allennlp.data.tokenizers.word_splitter import BertBasicWordSplitter
 from allennlp.data.vocabulary import Vocabulary
 from allennlp.modules.token_embedders.bert_token_embedder import PretrainedBertEmbedder
 
-
 from spm.data.dataset_readers import GLUESST2DatasetReader
+from spm import DATA_DIR as DATA_ROOT
 
 
 class TestSSTReader:
     FIXTURES_ROOT = (pathlib.Path(__file__).parent /
                      ".." / ".." / "tests" / "fixtures").resolve()
+    BERT_VOCAB_PATH = os.path.join(
+        DATA_ROOT, 'bert/bert-base-uncased-vocab.txt')
 
     @pytest.mark.parametrize("lazy", (True, False))
     def test_read(self, lazy):
         reader = GLUESST2DatasetReader(
             tokenizer=WordTokenizer(word_splitter=BertBasicWordSplitter()),
             token_indexers={'bert': PretrainedBertIndexer(
-                pretrained_model="data/bert/bert-base-uncased-vocab.txt")},
+                pretrained_model=self.BERT_VOCAB_PATH)},
             skip_label_indexing=False
         )
         instances = reader.read(
