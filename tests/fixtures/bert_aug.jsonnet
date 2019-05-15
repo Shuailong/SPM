@@ -1,7 +1,11 @@
 local bert_type = 'base';
 local run_env = 'local';
 
-local batch_size_base = 8; // 16g GPU mem required
+local epochs = 3;
+local train_samples = 1098734;
+local learning_rate = 2e-5;
+
+local batch_size_base = 32; // 8g GPU mem required
 local batch_size_large = 20; // 16g GPU mem required
 local feature_size_base = 768;
 local feature_size_large = 1024;
@@ -11,7 +15,7 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
 
 {
     "dataset_reader": {
-        "type": "quora",
+        "type": "mysnli",
         "tokenizer": {
             "type": "word",
             "word_splitter": {
@@ -25,9 +29,9 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
             }
         }
     },
-    "train_data_path": data_root + "/quora/Quora_question_pair_partition/train.tsv",
-    "validation_data_path": data_root + "/quora/Quora_question_pair_partition/dev.tsv",
-    "test_data_path": data_root + "/quora/Quora_question_pair_partition/test.tsv",
+    "train_data_path": "./tests/fixtures/snli_1.0_sample.jsonl",
+    "validation_data_path": "./tests/fixtures/snli_1.0_sample.jsonl",
+    "test_data_path": "./tests/fixtures/snli_1.0_sample.jsonl",
     "evaluate_on_test": true,
     "model": {
         "type": "bert_sequence_classifier",
@@ -48,7 +52,7 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
         "classifier": {
             "input_dim": feature_size,
             "num_layers": 1,
-            "hidden_dims": 2,
+            "hidden_dims": 3,
             "activations": "linear",
         }
     },
@@ -59,19 +63,18 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
     },
     "trainer": {
         "optimizer": {
-            "type": "adam",
-            "lr": 2e-5
+            "type": "bert_adam",
+            "lr": learning_rate,
+            "t_total": train_samples/batch_size*epochs,
+            "warmup": 0.1,
+            "weight_decay": 1e-2,
+            "parameter_groups": [
+                [["bias", "LayerNorm.bias", "LayerNorm.weight"], {"weight_decay": 0.0}],
+            ]
         },
         "validation_metric": "+accuracy",
         "num_serialized_models_to_keep": 1,
-        "num_epochs": 3,
-        "grad_norm": 10.0,
+        "num_epochs": epochs,
         "cuda_device": 0,
-        "learning_rate_scheduler": {
-            "type": "reduce_on_plateau",
-            "factor": 0.5,
-            "mode": "max",
-            "patience": 0
-        }
     }
 }
