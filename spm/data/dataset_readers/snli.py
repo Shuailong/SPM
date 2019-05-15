@@ -19,6 +19,8 @@ from allennlp.data.instance import Instance
 from allennlp.data.token_indexers import SingleIdTokenIndexer, TokenIndexer
 from allennlp.data.tokenizers import Tokenizer, WordTokenizer, Token
 
+from spm.data.fields import WeightField
+
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
@@ -71,13 +73,21 @@ class SnliReader(DatasetReader):
                 premise = example["sentence1"]
                 hypothesis = example["sentence2"]
 
-                yield self.text_to_instance(premise, hypothesis, label)
+                annotator_labels = example["annotator_labels"]
+                if len(annotator_labels) == 1:
+                    label_confidence = 1
+                else:
+                    label_confidence = annotator_labels.count(label)\
+                        / len(annotator_labels)
+
+                yield self.text_to_instance(premise, hypothesis, label, label_confidence)
 
     @overrides
     def text_to_instance(self,  # type: ignore
                          premise: str,
                          hypothesis: str,
-                         label: str = None) -> Instance:
+                         label: str = None,
+                         label_confidence: float = None) -> Instance:
         # pylint: disable=arguments-differ
         fields: Dict[str, Field] = {}
         premise_tokens = self._tokenizer.tokenize(premise)
@@ -93,6 +103,8 @@ class SnliReader(DatasetReader):
             fields['s2'] = TextField(hypothesis_tokens, self._token_indexers)
         if label:
             fields['label'] = LabelField(label)
+        if label_confidence:
+            fields['weight'] = WeightField(label_confidence)
 
         metadata = {"premise_tokens": [x.text for x in premise_tokens],
                     "hypothesis_tokens": [x.text for x in hypothesis_tokens]}

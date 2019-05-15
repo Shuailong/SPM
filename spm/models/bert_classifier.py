@@ -32,6 +32,8 @@ class BertSequenceClassifier(Model):
         Used to embed the ``tokens`` ``TextFields`` we get as input to the model.
     classifier : ``FeedForward``
         This feedforward network computes the output logits.
+    weighted_training: ``bool``, optional (default=False)
+        Whether to apply weights to each sample when calculating loss.
     dropout : ``float``, optional (default=0.1)
         Dropout percentage to use.
     initializer : ``InitializerApplicator``, optional (default=``InitializerApplicator()``)
@@ -43,6 +45,7 @@ class BertSequenceClassifier(Model):
     def __init__(self, vocab: Vocabulary,
                  bert: TextFieldEmbedder,
                  classifier: FeedForward,
+                 weighted_training: bool = False,
                  dropout: float = 0.1,
                  num_labels: int = None,
                  metrics: List[str] = ['acc'],
@@ -70,7 +73,11 @@ class BertSequenceClassifier(Model):
         self._accuracy = CategoricalAccuracy()
         if 'f1' in self.metrics:
             self._f1 = F1Measure(positive_label=1)
-        self._loss = torch.nn.CrossEntropyLoss()
+        self.weighted_training = weighted_training
+        if not weighted_training:
+            self._loss = torch.nn.CrossEntropyLoss()
+        else:
+            self._loss = torch.nn.CrossEntropyLoss(reduce='none')
 
         initializer(self)
 
@@ -78,6 +85,7 @@ class BertSequenceClassifier(Model):
     def forward(self,  # type: ignore
                 tokens: Dict[str, torch.LongTensor] = None,
                 label: torch.IntTensor = None,
+                weight: torch.FloatTensor = None,
                 metadata: List[Dict[str, Any]
                                ] = None  # pylint:disable=unused-argument
                 ) -> Dict[str, torch.Tensor]:
@@ -89,6 +97,8 @@ class BertSequenceClassifier(Model):
             From a ``TextField``
         label : torch.IntTensor, optional (default = None)
             From a ``LabelField``
+        weight: torch.FloatTensor, optional (default = None)
+            Weights to apply to each sample loss.
         metadata : ``List[Dict[str, Any]]``, optional, (default = None)
             Metadata containing the original tokenization of the text.
 
@@ -119,6 +129,9 @@ class BertSequenceClassifier(Model):
         if label is not None:
             loss = self._loss(
                 label_logits.view(-1, self._num_labels), label.view(-1))
+            if self.weighted_training:
+                loss = (loss * weight).mean()
+
             self._accuracy(label_logits, label)
             if 'f1' in self.metrics:
                 self._f1(label_logits, label)

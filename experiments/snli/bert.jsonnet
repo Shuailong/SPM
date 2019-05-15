@@ -1,10 +1,17 @@
-local bert_type = 'base';
-local run_env = 'docker';
+# env
+local run_env = 'local';
+local device = 0;
 
+# model
+local bert_type = 'base';
+
+# train
+local weighted = true;
 local epochs = 3;
 local train_samples = 549367;
 local learning_rate = 2e-5;
 
+# dependent vars
 local batch_size_base = 32; // 8g GPU mem required
 local batch_size_large = 20; // 16g GPU mem required
 local feature_size_base = 768;
@@ -35,6 +42,7 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
     "evaluate_on_test": true,
     "model": {
         "type": "bert_sequence_classifier",
+        "weighted_training": weighted,
         "bert": {
             "allow_unmatched_keys": true,
             "embedder_to_indexer_map": {
@@ -75,6 +83,6 @@ local feature_size = if bert_type == 'base' then feature_size_base else feature_
         "validation_metric": "+accuracy",
         "num_serialized_models_to_keep": 1,
         "num_epochs": epochs,
-        "cuda_device": 0,
+        "cuda_device": device,
     }
 }
