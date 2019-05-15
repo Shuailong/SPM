@@ -8,8 +8,11 @@
 
 import json
 import argparse
+import random
 
 from tqdm import tqdm
+
+from allennlp.data.tokenizers.word_tokenizer import WordTokenizer
 
 
 def main(args):
@@ -46,26 +49,53 @@ def main(args):
             })
             count += 1
     print(f'From {total} mirror instances.')
+
     print('-'*100)
-    print('Combine and writing...')
-    count = 0
+    print('Finding paraphrase samples...')
     assert len(original_data) == len(mirror_data),\
         'original dataset size != mirror dataset size'
+    positive_samples, negative_samples = [], []
+
+    for original, mirror in tqdm(zip(original_data, mirror_data), total=len(original_data)):
+        assert original['sentence1'] == mirror['sentence2']
+        assert original['sentence2'] == mirror['sentence1']
+        if original['gold_label'] == 'entailment' and mirror['gold_label'] == 'entailment'\
+                and mirror['confidence'] >= args.confidence_threshold:
+            positive_samples.append({
+                'sentence1': original['sentence1'],
+                'sentence2': original['sentence2'],
+                'label': 1
+            })
+        else:
+            negative_samples.append({
+                'sentence1': original['sentence1'],
+                'sentence2': original['sentence2'],
+                'label': 0
+            })
+
+    print('-'*100)
+    print('Tokenize and write into output')
+    negative_samples = random.sample(negative_samples, len(positive_samples))
+    samples = positive_samples + negative_samples
+    random.shuffle(samples)
+
+    tokenizer = WordTokenizer()
     with open(args.output, 'w') as outf:
-        for original, mirror in tqdm(zip(original_data, mirror_data), total=len(original_data)):
-            assert original['sentence1'] == mirror['sentence2']
-            assert original['sentence2'] == mirror['sentence1']
-            if original['gold_label'] == 'entailment' and mirror['gold_label'] == 'entailment'\
-                    and mirror['confidence'] >= args.confidence_threshold:
-                pair = {
-                    'sentence1': original['sentence1'],
-                    'sentence2': original['sentence2']
-                }
-                outf.write(json.dumps(pair) + '\n')
-                count += 1
+        # MRPC format
+        outf.write(f'Quality\t#1 ID\t#2 ID\t#1 String\t#2 String\n')
+
+        for sample in tqdm(samples, total=len(samples)):
+            label = sample['label']
+            sentence1, sentence2 = sample['sentence1'], sample['sentence2']
+            s1_tokens = ' '.join(
+                (t.text for t in tokenizer.tokenize(sentence1)))
+            s2_tokens = ' '.join(
+                (t.text for t in tokenizer.tokenize(sentence2)))
+            outf.write(
+                f'{label}\tsentence1\tsentence2\t{s1_tokens}\t{s2_tokens}\n')
 
     print(
-        f'Written {count} pairs of paraphrase into {args.output}')
+        f'Written {len(samples)} pairs of paraphrase into {args.output}')
 
 
 if __name__ == '__main__':
