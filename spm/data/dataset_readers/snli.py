@@ -46,12 +46,14 @@ class SnliReader(DatasetReader):
                  tokenizer: Tokenizer = None,
                  token_indexers: Dict[str, TokenIndexer] = None,
                  mode: str = "merge",
+                 weighted_training: bool = False,
                  lazy: bool = False) -> None:
         super().__init__(lazy)
         self._tokenizer = tokenizer or WordTokenizer()
         self._token_indexers = token_indexers or {
             'tokens': SingleIdTokenIndexer()}
         self.mode = mode
+        self.weighted_training = weighted_training
 
     @overrides
     def _read(self, file_path: str):
@@ -73,12 +75,15 @@ class SnliReader(DatasetReader):
                 premise = example["sentence1"]
                 hypothesis = example["sentence2"]
 
-                annotator_labels = example["annotator_labels"]
-                if len(annotator_labels) == 1:
-                    label_confidence = 1
+                if self.weighted_training:
+                    annotator_labels = example["annotator_labels"]
+                    if len(annotator_labels) == 1:
+                        label_confidence = 1
+                    else:
+                        label_confidence = annotator_labels.count(label)\
+                            / len(annotator_labels)
                 else:
-                    label_confidence = annotator_labels.count(label)\
-                        / len(annotator_labels)
+                    label_confidence = None
 
                 yield self.text_to_instance(premise, hypothesis, label, label_confidence)
 

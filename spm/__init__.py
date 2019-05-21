@@ -8,6 +8,7 @@
 
 # pylint: disable=wildcard-import
 import os
+from pathlib import PosixPath
 
 DATA_DIR = (
     os.getenv('SPM_DATA') or
