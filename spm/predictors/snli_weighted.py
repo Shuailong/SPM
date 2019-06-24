@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 # @Author: Shuailong
 # @Email: liangshuailong@gmail.com
-# @Date: 2019-05-07 17:35:17
+# @Date: 2019-06-23 12:08:38
 # @Last Modified by: Shuailong
-# @Last Modified time: 2019-05-07 17:35:31
+# @Last Modified time: 2019-06-23 12:08:46
 
 from typing import List
 import json
@@ -16,7 +16,7 @@ from allennlp.predictors.predictor import Predictor
 from allennlp.models import Model
 
 
-@Predictor.register('snli')
+@Predictor.register('snli-weight')
 class SNLIPredictor(Predictor):
     def __init__(self, model: Model, dataset_reader: DatasetReader) -> None:
         super().__init__(model, dataset_reader)
@@ -44,8 +44,15 @@ class SNLIPredictor(Predictor):
         premise = json_dict["sentence1"]
         hypothesis = json_dict["sentence2"]
 
+        annotator_labels = json_dict["annotator_labels"]
+        if len(annotator_labels) == 1:
+            label_confidence = 1
+        else:
+            label_confidence = annotator_labels.count(label)\
+                / len(annotator_labels)
+
         instance = self._dataset_reader.text_to_instance(
-            premise, hypothesis, label)
+            premise, hypothesis, label, label_confidence)
 
         return instance
 
